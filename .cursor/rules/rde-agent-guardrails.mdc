@@ -1,0 +1,36 @@
+---
+description: Core RDE engineering guardrails for agents
+alwaysApply: true
+---
+
+# RDE Agent Guardrails
+
+Read `AGENTS.md`, `CLAUDE.md`, and
+`docs/engineering/agent-correction-playbook.md` before changing code.
+
+- **Session start:** read and follow
+  `.claude/skills/dev-machine-profile/SKILL.md` — run
+  `.venv/bin/python3 -m rde machine-profile --json` before any backend/GPU claim.
+- Run project code only with `.venv/bin/python3`; never debug dependency
+  failures with system Python.
+- **Before backend or GPU claims**, use the detected `profile_id` from
+  `machine-profile`; do not assume Intel vs Apple Silicon from prose.
+- **New hot paths must be optimization-first** (MLX/vectorization/batching/workers
+  from the first commit). See `.cursor/rules/optimization-first-architecture.mdc`.
+- **Before writing any RDE experiment**, follow
+  `src/rde/docs/experiment-playbook.md`: real random-instance population,
+  a `DomainContract`, leak-audited structural predictors, held-out generator
+  families, the discovery loop + `assess_outcome` gate, a pre-registered
+  decision rule, and a stop rule.
+- Inspect `git status`, the current diff, and recent history first. Preserve
+  unrelated user changes and never reset or commit unless explicitly asked.
+- Core RDE must not import domain plugins; adapters register via `rde.domains`.
+- Treat backend, dtype, shape, memory, and numerical semantics as contracts.
+  Add a regression test with each behavior or performance change.
+- Mask non-finite data, guard denominators, reject constant inputs, and keep
+  undefined statistics as `NaN`.
+- Test real CLI/parser boundaries and report/manifest wiring, not only helpers.
+- Do not turn finite-size experiments into universal claims.
+- Any non-trivial RDE run must show live, real progress (work counter + elapsed
+  + ETA) and persist durable logs. `NullProgress()` is the explicit silence
+  opt-out.

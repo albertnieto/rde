@@ -1,0 +1,14 @@
+---
+description: RDE engineering contract pointer
+globs: src/rde/**/*.py
+alwaysApply: true
+---
+
+Follow the shipped RDE engineering contracts in
+`src/rde/docs/engineering.md`, with science and experiment requirements in
+`src/rde/docs/methodology.md`, `src/rde/docs/ARCHITECTURE.md`, and
+`src/rde/docs/experiment-playbook.md`. Detect the machine profile before
+backend claims; preserve vectorization, batching, cache, numerical, provenance,
+and durable-progress contracts. RDE core defaults to live overall/per-task
+progress with elapsed time and ETA, including flushed newline output under
+`tee`/CI; use `NullProgress()` only when silence is explicitly required.

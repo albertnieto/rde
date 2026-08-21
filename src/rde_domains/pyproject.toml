@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rde-domains"
+version = "0.1.0"
+description = "HSP and TSP domain adapters for the Representation Discovery Engine"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Albert Nieto"}]
+dependencies = [
+    "rde>=0.1.0",
+    "numpy>=2.4",
+    "scipy>=1.17",
+    "networkx>=3.6",
+    "sympy>=1.14",
+    "rich>=13.7",
+]
+
+[project.urls]
+Repository = "https://github.com/albertnieto/rde"
+Documentation = "https://github.com/albertnieto/rde#readme"
+
+[project.entry-points."rde.domains"]
+tsp_clustered = "rde_domains.plugins:register_tsp_clustered"
+tsp_uniform_control = "rde_domains.plugins:register_tsp_uniform_control"
+tsp_circulant_symmetry = "rde_domains.plugins:register_tsp_circulant_symmetry"
+tsp_cost_landscape = "rde_domains.plugins:register_tsp_cost_landscape"
+tsp_landscape_stats = "rde_domains.plugins:register_tsp_landscape_stats"
+hsp_functions = "rde_domains.plugins:register_hsp_functions"
+
+[tool.setuptools]
+include-package-data = true
+package-dir = {rde_domains = "."}
+packages = [
+    "rde_domains",
+    "rde_domains.hsp_functions",
+    "rde_domains.tsp",
+]
+
+[tool.setuptools.package-data]
+rde_domains = ["README.md", "LICENSE"]

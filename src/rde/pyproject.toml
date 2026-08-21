@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rde"
+version = "0.1.0"
+description = "Domain-agnostic experimental-mathematics and representation discovery"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Albert Nieto"}]
+dependencies = [
+    "numpy>=2.4",
+    "scipy>=1.17",
+    "networkx>=3.6",
+    "rich>=13.7",
+    "sympy>=1.14",
+]
+
+[project.urls]
+Repository = "https://github.com/albertnieto/rde"
+Documentation = "https://github.com/albertnieto/rde#readme"
+
+[project.optional-dependencies]
+mlx = [
+    "mlx>=0.32; platform_machine == 'arm64' and sys_platform == 'darwin'",
+]
+parquet = ["pyarrow>=15.0"]
+symbolic = ["pysr>=0.16", "pyoperon>=0.4"]
+
+[project.scripts]
+rde = "rde.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+package-dir = {rde = "."}
+packages = [
+    "rde",
+    "rde.analyze",
+    "rde.backends",
+    "rde.cli",
+    "rde.core",
+    "rde.descriptor_gen",
+    "rde.discovery",
+    "rde.experiment",
+    "rde.expression",
+    "rde.features",
+    "rde.generators",
+    "rde.io",
+    "rde.runtime",
+    "rde.synthesis",
+    "rde.testing",
+]
+
+[tool.setuptools.package-data]
+rde = ["README.md", "LICENSE", "docs/*.md", "docs/**/*.md"]

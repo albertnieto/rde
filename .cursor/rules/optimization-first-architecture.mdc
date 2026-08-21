@@ -1,0 +1,31 @@
+---
+description: New code must be optimized by default — GPU, batching, vectorization, workers
+alwaysApply: true
+---
+
+# Optimization-First Architecture (Default Design Bar)
+
+Every **new** RDE domain, experiment hot path, evaluator, or campaign feature
+must be designed for performance **from the first commit**, not as a later pass.
+
+Before marking work done, verify:
+
+1. **Machine profile** — run `.venv/bin/python3 -m rde machine-profile` and pick
+   backends accordingly (`mlx`/`auto` on `apple_silicon_mac`, `numpy` on
+   `intel_mac`).
+2. **GPU / MLX** — hot loops run batched on MLX when Metal is available; no
+   per-step NumPy roundtrips; cache device tensors.
+3. **Vectorization** — no Python loops over \(2^N\), rows, candidates, or state
+   dimensions unless documented as an intentional small-\(N\) setup exception.
+4. **Batching** — group compatible instances so `prepare_instances_batch` and
+   pipeline batch_size can reuse work.
+5. **Workers** — CPU-bound orchestration uses `workers > 1` where process pools
+   are safe; parent pre-batches GPU work before worker dispatch when applicable.
+6. **Parity tests** — every fast path has a reference or harness check; record
+   requested vs effective backend in manifests when fallback occurs.
+
+If a prototype is intentionally scalar, label it `theoretical-only` or keep it
+off the campaign path until the optimized contract exists.
+
+See `docs/engineering/agent-correction-playbook.md` and
+`.cursor/rules/rde-performance-guardrails.mdc`.

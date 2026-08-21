@@ -1,0 +1,77 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rde-workspace"
+version = "0.1.0"
+description = "Representation Discovery Engine — core library and HSP/TSP domain adapters"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Albert Nieto"}]
+license = {text = "MIT"}
+
+dependencies = [
+    "numpy>=2.4",
+    "scipy>=1.17",
+    "networkx>=3.6",
+    "sympy>=1.14",
+    "rich>=13.7",
+    "pytest>=9.0",
+    "mlx>=0.32; platform_machine == 'arm64' and sys_platform == 'darwin'",
+    "pyarrow>=15.0",
+    "pyoperon>=0.4",
+]
+
+[project.urls]
+Repository = "https://github.com/albertnieto/rde"
+Documentation = "https://github.com/albertnieto/rde#readme"
+
+[project.scripts]
+rde = "rde.cli:main"
+
+[project.entry-points."rde.domains"]
+tsp_clustered = "rde_domains.plugins:register_tsp_clustered"
+tsp_uniform_control = "rde_domains.plugins:register_tsp_uniform_control"
+tsp_circulant_symmetry = "rde_domains.plugins:register_tsp_circulant_symmetry"
+tsp_cost_landscape = "rde_domains.plugins:register_tsp_cost_landscape"
+tsp_landscape_stats = "rde_domains.plugins:register_tsp_landscape_stats"
+hsp_functions = "rde_domains.plugins:register_hsp_functions"
+
+[project.optional-dependencies]
+rde-parquet = ["pyarrow>=15.0"]
+rde-symbolic = ["pysr>=0.16", "pyoperon>=0.4"]
+dev = [
+    "ruff>=0.9",
+    "coverage>=7.6",
+    "pytest-xdist>=3.6",
+    "torch>=2.2.2",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = ["I001", "F401", "F841", "E402", "F541", "F811"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: high-row-count stress test; excluded by default addopts, run explicitly with `pytest -m slow`",
+]
+addopts = ["-m", "not slow"]
+
+[tool.coverage.run]
+source = ["rde", "rde_domains"]
+omit = ["*/tests/*", "*/experiments/*"]
+
+[tool.coverage.report]
+fail_under = 50
+show_missing = true
