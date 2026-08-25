@@ -41,12 +41,19 @@ coincidence, not structure. `search_chains` requires an independent
 never train complexity — the same design choice `holdout.py`'s
 `leakage_ratio` already made once: report the number, do not silently trust
 the training-set score.
+
+`search_chains`'s verify-on-train/drop/verify-on-holdout/drop/rank-by-holdout
+shape is implemented via `rde.search.holdout_search.search_with_holdout` —
+`rde.recovery.search_space.search_recovery_chains` independently converged
+on the identical shape for a completely different candidate type
+(`RecoveryProtocol` chains, not `Representation` chains), which is why that
+shape now lives in `rde.search` rather than being reimplemented per module.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Any, Sequence
 
 from rde.representation.array_backend import ArraySearchBackend, get_array_backend
 from rde.representation.certificate import Certificate, certify_roundtrip
@@ -54,6 +61,7 @@ from rde.representation.grammar import build_primitive_representations
 from rde.representation.grammar import primitive_names as _grammar_primitive_names
 from rde.representation.layered import _STAGE2_BUILDERS, compose_layers
 from rde.representation.representation import Representation
+from rde.search import VerifyResult, search_with_holdout
 
 
 def atomic_registry(
@@ -215,17 +223,31 @@ def search_chains(
         primitive_subset=primitive_subset,
     )
 
-    results: list[ChainSearchResult] = []
-    for representation_id, representation in chains.items():
-        train_certificate = certify_roundtrip(representation, train_batch, tolerance=tolerance)
-        if train_certificate.status != "verified":
-            continue
-        holdout_certificate = certify_roundtrip(representation, holdout_batch, tolerance=tolerance)
-        if holdout_certificate.status != "verified":
-            continue
+    def _verify(
+        candidates: Sequence[Representation], _domain: Any, batch: Any
+    ) -> dict[str, VerifyResult]:
+        out: dict[str, VerifyResult] = {}
+        for representation in candidates:
+            certificate = certify_roundtrip(representation, batch, tolerance=tolerance)
+            ok = certificate.status == "verified"
+            objective = _complexity_or_inf(representation, batch) if ok else float("inf")
+            out[representation.representation_id] = VerifyResult(
+                ok=ok, objective=objective, detail=certificate
+            )
+        return out
 
-        train_complexity = _complexity_or_inf(representation, train_batch)
-        holdout_complexity = _complexity_or_inf(representation, holdout_batch)
+    search_results = search_with_holdout(
+        list(chains.values()),
+        train_batch,
+        holdout_batch,
+        verify=_verify,
+        candidate_id=lambda r: r.representation_id,
+    )
+
+    results: list[ChainSearchResult] = []
+    for item in search_results:
+        train_complexity = item.train.objective
+        holdout_complexity = item.holdout.objective
         if train_complexity > 0:
             ratio = holdout_complexity / train_complexity
         else:
@@ -233,18 +255,16 @@ def search_chains(
 
         results.append(
             ChainSearchResult(
-                representation_id=representation_id,
-                representation=representation,
-                depth=representation_id.count("+") + 1,
-                train_certificate=train_certificate,
-                holdout_certificate=holdout_certificate,
+                representation_id=item.candidate_id,
+                representation=item.candidate,
+                depth=item.candidate_id.count("+") + 1,
+                train_certificate=item.train.detail,
+                holdout_certificate=item.holdout.detail,
                 train_complexity=train_complexity,
                 holdout_complexity=holdout_complexity,
                 generalization_ratio=ratio,
             )
         )
-
-    results.sort(key=lambda r: r.holdout_complexity)
     return results
 
 

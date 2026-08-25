@@ -201,6 +201,61 @@ The historical implementation slices are engineering chronology only:
    smooth transition centered almost exactly on `eps=1e-6`, not a step
    function (see `docs/representation-synthesis-theory.md` §13).
 
+9. Recovery generalization (`recovery/`), still Mode 2's query-tape surface
+   (methodology §4), not a new mode: `programs.py` gained a `ratio` bag (the
+   multiplicative counterpart of `diff`, for hidden subgroups of \(\mathbb
+   Z_{\mathrm{mod}}^*\) rather than the additive/XOR group),
+   `ConfidentCollisionProgram` (abstains below a confidence margin instead of
+   always guessing a plurality mode), `GroupClosureProgram` (reads
+   collision-*group* membership directly — a whole coset collapsing onto one
+   label — rather than a pairwise combination, family-agnostic across `xor`
+   and `mult` group actions), and `PairCombine` (general depth-2 composition
+   of any two protocols). `search_space.py` is new: `search_recovery_chains`
+   ports `program_search.py`'s enumerate/verify-on-discovery/verify-on-
+   confirmatory/rank-by-confirmatory discipline into `recovery/` — depth-1
+   programs plus depth-2 `PairCombine` pairings, scored against an
+   independent discovery/confirmatory split, keeping only what survives
+   both. `rde_domains/hsp_functions/` gained a `multiplicative_fold` family
+   (hides an order-4 unit of \((\mathbb Z/2^n\mathbb Z)^*\), a genuinely
+   different abelian group action from every XOR/shift family already
+   there) and `AbelianDihedralSecret` (a typed, ordered two-part secret for
+   `abelian_dihedral_blend`, replacing an untyped tuple so a generic paired
+   search can't be mistaken for a match against `quaternion_coset`'s
+   unordered coset tuple).
+10. Generic search engine + diversity archive + opt-in universal substrate
+    (`search/`, `discovery/archive.py`, `substrate/`): `program_search.py`
+    (item 8) and `search_space.py` (item 9) independently converged on the
+    identical enumerate→verify-on-train→drop→verify-on-holdout→drop→
+    rank-by-holdout shape for two unrelated candidate types. `search/`
+    names that shape once (`search_with_holdout`); both modules now
+    delegate to it internally, behavior unchanged (regression-verified
+    against their existing test suites). `discovery/archive.py`'s
+    `EliteArchive` is a MAP-Elites-style diversity archive (best candidate
+    per behavior-descriptor bucket), complementing — not replacing —
+    `representation/pareto.py`'s dominance frontier. `substrate/` is a
+    deliberately minimal, opt-in alternative candidate source: a
+    deterministic bytecode VM (`vm.py`) and bounded brute-force program
+    enumeration (`enumeration.py`), with no attached mathematical
+    vocabulary — it plugs into the same `search_with_holdout` engine as the
+    typed-grammar enumerators, an interchangeable candidate space chosen at
+    call time. `rde/testing/vm_toy.py` demonstrates it end to end
+    (rediscovering `f(x) = x + offset`). All three are cross-cutting
+    engineering, same posture as `backends/` — never a PZXESO status claim.
+11. Backend portability fix (`backends/`, not a new capability): a torch
+    wheel built against NumPy 1.x's C-ABI raises on `Tensor.numpy()` under
+    a NumPy 2.x environment (observed on Intel macOS, where no newer torch
+    wheel exists to upgrade past) — `torch_mps_backend._as_numpy` now falls
+    back to a bulk `ctypes` read of the tensor's own memory instead of the
+    broken bridge — torch backends stay usable despite the ABI mismatch,
+    rather than being silently excluded. New `backends.usable_backends()`
+    filters `compute_backend_choices()` (every name the CLI accepts) down to
+    backends that will actually run on this machine right now (no `mlx` off
+    Apple Silicon; no torch backend if `torch` is not importable or the
+    `_as_numpy` bridge still fails for some other reason even after the
+    `ctypes` fallback) — the correct function for test skip guards, which
+    `compute_backend_choices` (previously called via its `available_backends`
+    alias) was never meant to be.
+
 The numbers above do not correspond to G0–G5.
 
 ## Implemented contracts

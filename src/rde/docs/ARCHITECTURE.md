@@ -92,7 +92,8 @@ flowchart TB
 | Domain adapters, generators, `DomainContract` | **P** | `src/rde_domains/`, `core/domain_contract.py`, `generators/` |
 | `prepare_instance`, `materialize`, `primitive_features`, descriptors, metrics | Measure **Z** (later search may treat results as **X** / **E**); never derived from the hidden answer | `runtime/worker.py`, `features/`, `runtime/metrics.py` |
 | JSONL / NPZ / Parquet | Persistence of those measurements | `io/store.py`, `runtime/campaign.py`, `io/seal.py` |
-| `discover` / `latent` / `represent` / `synthesize` | Mode 1: \(Z/X/E/O\) hypotheses. Mode 2: skeletons under \(C_{\mathrm{target}}\) | `expression/`, `discovery/`, `analyze/ranker.py`, `synthesis/` |
+| `discover` / `latent` / `represent` / `synthesize` | Mode 1: \(Z/X/E/O\) hypotheses. Mode 2: skeletons under \(C_{\mathrm{target}}\) via `SynthesisDomain` (divide/combine) | `expression/`, `discovery/`, `analyze/ranker.py`, `synthesis/` |
+| Query-tape extraction under a query budget | Mode 2's other executable surface (methodology §4): `RecoveryDomain` | `recovery/` |
 | `assess_outcome`, audit / obstruct / certify | Grades G0–G5 | `analyze/outcome.py` |
 
 **Cross-cutting:** compute backends (`backends/`) and campaign orchestration
@@ -158,11 +159,15 @@ Mode 2 compilation depth (TARGET → ALGORITHM → … → primitives) is method
 
 ```text
 src/rde/
-├── cli.py              # `python -m rde` entrypoint
+├── __main__.py         # `python -m rde` entrypoint (delegates to cli/)
+├── cli/                # Argument parsing + command implementations
+│   ├── main.py         # entry function __main__.py calls
+│   ├── commands.py     # one function per subcommand (run, discover, repr-rank, …)
+│   └── common.py       # shared CLI plumbing
 ├── __init__.py         # Public Python API (re-exports below)
 │
 ├── core/               # Types, registry, plugins, schema
-│   ├── protocols.py    # Domain, Descriptor, Metric, QueryIntent
+│   ├── protocols.py    # Domain, Descriptor, Metric, QueryIntent, RecoveryDomain, SynthesisDomain
 │   ├── instance.py     # InstanceRecord
 │   ├── registry.py     # Plugin registry
 │   ├── plugins.py      # build_registry(), domain loaders
@@ -190,17 +195,53 @@ src/rde/
 │   ├── calibration.py
 │   └── outcome.py      # G0–G5 gates
 │
+├── experiment/         # Mechanical enforcement: gate + receipt + run merging
+│   ├── gate.py         # ExperimentGate, phase/receipt validation
+│   ├── merge.py        # leak-clean discovery run merging
+│   ├── runner.py
+│   └── stages.py
+│
 ├── features/           # Descriptor implementations
+├── descriptor_gen/      # Parameterized descriptor generators (enumerate/rank templates)
 ├── backends/           # numpy / mlx / torch enumeration
 ├── generators/         # Instance family plugins
 ├── expression/         # Metric DSL + mlx/torch eval
-├── discovery/          # Latent, symbolic, GP, operator
+├── discovery/          # Latent, symbolic, GP, operator, diversity archive
 ├── synthesis/          # Mode 2 (ALGO-057)
+├── recovery/           # Mode 2 query-tape recovery (HSP-shaped surface, see methodology §4)
 ├── representation/     # Representation Core (experimental, see below)
+├── search/             # Generic verify/holdout-rank search engine (see below)
+├── substrate/          # Opt-in ontology-free program substrate (see below)
 ├── testing/            # toy domains + store stress helpers
 │
 └── docs/               # This file, CLI README, implementation status
 ```
+
+### Cross-cutting search infrastructure
+
+Like `backends/`, these add search throughput/reach, not new science
+letters — they never appear in a PZXESO status claim.
+
+- `search/` names the enumerate→verify-on-train→drop→verify-on-holdout→
+  drop→rank-by-holdout shape that `representation/program_search.py` and
+  `recovery/search_space.py` each independently implemented for different
+  candidate types (typed representation chains; recovery-protocol chains).
+  `search_with_holdout()` is that shape once, parameterized by a
+  caller-supplied `Verifier`/`candidate_id`; both modules now delegate to it
+  internally.
+- `discovery/archive.py`'s `EliteArchive` is a MAP-Elites-style diversity
+  archive (best candidate per behavior-descriptor bucket), complementing
+  `representation/pareto.py`'s dominance frontier — a home for multiple
+  non-dominated witnesses that occupy different behavioral niches, not a
+  replacement for Pareto ranking.
+- `substrate/` is a deliberately minimal, opt-in alternative candidate
+  source: a tiny deterministic bytecode VM (`vm.py`) plus bounded brute-force
+  program enumeration (`enumeration.py`), with no attached mathematical
+  vocabulary. It plugs into the same `search.search_with_holdout` engine as
+  the typed-grammar enumerators — an interchangeable candidate space chosen
+  at call time, not a replacement for typed-grammar search. See
+  `rde/testing/vm_toy.py` for an end-to-end demonstration and each module's
+  docstring for why it does not aim to scale past small instruction counts.
 
 ### Representation Core (experimental)
 

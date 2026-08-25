@@ -116,7 +116,12 @@ actually covered vs. the original proposal):
   compatibility graph today is small and sparse enough that exhaustive
   enumeration is already optimal (see the module docstring for the specific
   reasoning); this is deliberately not "invent novel primitives" — it only
-  composes primitives that already exist.
+  composes primitives that already exist. `search_chains`'s verify/holdout-
+  rank loop now delegates to `rde.search.holdout_search.search_with_holdout`
+  (behavior unchanged) — `rde.recovery.search_space.search_recovery_chains`
+  independently converged on the identical shape for a completely different
+  candidate type, which is why that shape now lives in `rde.search` instead
+  of being reimplemented per module; see `docs/roadmap.md` item 10.
 - `grammar.py`'s `dct` — a genuinely new eighth stage-1 primitive (not a
   composition of existing ones), scoped to one well-known, textbook-standard
   transform rather than open-ended "invent a building block nobody has

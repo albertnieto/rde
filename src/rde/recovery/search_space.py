@@ -15,6 +15,13 @@ Atoms are family-agnostic (see `programs.py`'s `ConfidentCollisionProgram`,
 `GroupClosureProgram`, `PairCombine` docstrings). Which family a given chain
 ends up solving is discovered by the evaluation below, not designed in by
 picking a family and hand-fitting a program to it.
+
+`search_recovery_chains`'s verify-on-discovery/drop/verify-on-confirmatory/
+drop/rank-by-confirmatory shape is implemented via
+`rde.search.holdout_search.search_with_holdout` — the same generic engine
+`rde.representation.program_search.search_chains` uses for a completely
+different candidate type, since both independently converged on the
+identical discipline.
 """
 
 from __future__ import annotations
@@ -34,6 +41,7 @@ from rde.recovery.programs import (
     enumerate_recovery_programs,
 )
 from rde.recovery.search import evaluate_protocols
+from rde.search import VerifyResult, search_with_holdout
 
 
 def _encoder_key(protocol: Any) -> tuple[str, Any]:
@@ -127,29 +135,39 @@ def search_recovery_chains(
     rng = np.random.default_rng(0) if rng is None else rng
     chains = enumerate_recovery_chains(max_depth=max_depth, mask_bits_choices=mask_bits_choices)
 
-    discovery_report = evaluate_protocols(domain, discovery_instances, chains, rng=rng)
-    confirmatory_report = evaluate_protocols(domain, confirmatory_instances, chains, rng=rng)
+    def _verify(candidates: Sequence[Any], _domain: RecoveryDomain, instances: Sequence[Any]) -> dict[str, VerifyResult]:
+        report = evaluate_protocols(_domain, instances, candidates, rng=rng)
+        out: dict[str, VerifyResult] = {}
+        for protocol in candidates:
+            recall = report.rate(protocol.protocol_id, family)
+            ok = recall == recall and recall >= min_recall
+            out[protocol.protocol_id] = VerifyResult(ok=ok, objective=recall)
+        return out
+
+    search_results = search_with_holdout(
+        list(chains),
+        discovery_instances,
+        confirmatory_instances,
+        verify=_verify,
+        candidate_id=lambda p: p.protocol_id,
+        domain=domain,
+        higher_is_better=True,
+    )
 
     results: list[RecoveryChainResult] = []
-    for protocol in chains:
-        discovery_recall = discovery_report.rate(protocol.protocol_id, family)
-        if discovery_recall != discovery_recall or discovery_recall < min_recall:
-            continue
-        confirmatory_recall = confirmatory_report.rate(protocol.protocol_id, family)
-        if confirmatory_recall != confirmatory_recall or confirmatory_recall < min_recall:
-            continue
+    for item in search_results:
+        discovery_recall = item.train.objective
+        confirmatory_recall = item.holdout.objective
         ratio = confirmatory_recall / discovery_recall if discovery_recall > 0 else float("inf")
-        depth = 2 if isinstance(protocol, PairCombine) else 1
+        depth = 2 if isinstance(item.candidate, PairCombine) else 1
         results.append(
             RecoveryChainResult(
-                protocol_id=protocol.protocol_id,
-                protocol=protocol,
+                protocol_id=item.candidate_id,
+                protocol=item.candidate,
                 depth=depth,
                 discovery_recall=discovery_recall,
                 confirmatory_recall=confirmatory_recall,
                 recall_ratio=ratio,
             )
         )
-
-    results.sort(key=lambda r: -r.confirmatory_recall)
     return results
