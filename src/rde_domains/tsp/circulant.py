@@ -1,4 +1,4 @@
-"""Circulant-symmetry TSP domain (Direction E, abelian-symmetry pivot).
+"""Circulant-symmetry TSP domain.
 
 Generates Euclidean TSP instances with a tunable, planted degree of broken
 cyclic (Z_N) symmetry: at `symmetry_break=0`, cities sit exactly on a
@@ -8,21 +8,15 @@ hidden abelian Z_N structure, the group Simon/Shor-style Fourier sampling
 exploits). Increasing `symmetry_break` perturbs city positions with
 Gaussian noise, degrading that symmetry continuously.
 
-Purpose: give RDE's forward discovery loop (Phase 2b/3 descriptor and
-expression generators) a real, non-circular target --
+Purpose: give RDE's forward discovery loop a real, non-circular target --
 `circulant_deviation`, computed directly from D by projecting onto the
 circulant subspace, independent of any brute-force tour computation -- and
 ask whether raw-matrix descriptors can detect/predict planted symmetry
 breaking. This is Mode 1 measure-Z only: no SynthesisDomain / Mode 2 protocol,
 no brute-force tour ground truth, so it scales past the N<=9 cap that
-`TspSynthesisDomain` needs.
-
-See docs/roadmap.md Direction E and
-docs/research/tsp-novel-representation-discovery-charter.md. Whether
-detectable circulant structure translates into an actual quantum
-algorithmic advantage is a separate, unresolved question (see the charter's
-Gate 0) -- this domain only characterizes detectability of the symmetry
-itself, which is useful groundwork independent of how that resolves.
+`TspSynthesisDomain` needs. This domain only characterizes detectability of
+the symmetry itself; whether detectable circulant structure translates into
+an actual algorithmic advantage is a separate, unresolved question.
 """
 
 from __future__ import annotations

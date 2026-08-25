@@ -1,7 +1,4 @@
-"""Hidden-subgroup-style oracle-function family discovery domain (Direction F).
-
-See `docs/research/hidden-subgroup-function-discovery-charter.md`.
-"""
+"""Hidden-subgroup-style oracle-function family discovery domain."""
 
 from __future__ import annotations
 

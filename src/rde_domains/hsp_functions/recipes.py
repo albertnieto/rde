@@ -6,7 +6,7 @@ analytic hidden-pairing recipes:
 
 - 80% structured HSP-style (XOR subspace, cyclic period, dihedral
   reflection, Heisenberg, quaternion) -- constructions with a
-  literature or plausible query-gap (CLAIM-188--193). Most of these keep
+  literature or plausible query-gap. Most of these keep
   the exact-promise pairing; a small tail adds mild label noise.
 - 10% blends of two structured laws
 - 10% structureless control

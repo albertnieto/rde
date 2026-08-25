@@ -14,15 +14,14 @@ retired; domains supply \(S\).
 staging note; letter \(\mathcal{H}\) as a fixed substrate is retired in favor
 of domain-supplied \(S\).
 
-**Implements:** [ALGO-057](../../../docs/algorithms/ALGO-057_rde-hierarchical-synthesis-backward-target-search.md)
-(`src/rde/synthesis/`); [ALGO-058](../../../docs/algorithms/ALGO-058_qubo-interaction-component-synthesisdomain-stage-a.md)
-(`src/rde_domains/qubo_synthesis/`).
+**Implements:** `src/rde/synthesis/` (TARGET + ALGORITHM + pre-domain
+recurrence pruning); `src/rde_domains/tsp/domain.py` (`TspSynthesisDomain`,
+a real `SynthesisDomain` over Euclidean TSP instances).
 
 **Related docs:**
 
 - [RDE Methodology — Theory and Definitions](methodology.md)
 - [RDE implementation chronology](roadmap.md)
-- [Generic-QUBO instrument co-design charter](../../../docs/research/generic-qubo-instrument-co-design-charter.md)
 
 ---
 
@@ -35,7 +34,7 @@ RDE has two complementary search modes (methodology §4):
 2. **Mode 2 — Reverse synthesis** — start from \(C_{\mathrm{target}}\), search
    for a skeleton, then compile downward.
 
-This page names the **Mode 2 compilation stack**, states what ALGO-057
+This page names the **Mode 2 compilation stack**, states what `rde.synthesis`
 implements today, and keeps non-claims explicit. It is **not** a second
 science ladder.
 
@@ -77,7 +76,7 @@ RESOURCE + COMPLEXITY ANALYSIS
 | **RESOURCE + COMPLEXITY ANALYSIS** | Gate count \(G\), depth \(D\), qubits \(N_q\), ancillas \(N_{\mathrm{ancilla}}\), shots — and closed-form recurrence checks that reject exponential shapes *before* domain work. |
 
 **Ordering rule (load-bearing):** complexity / budget pruning happens **before**
-domain execution and **before** any quantum compilation. The brief's contrasting
+domain execution and **before** any quantum compilation. The contrasting
 example is intentional:
 
 \[
@@ -98,10 +97,10 @@ the code.
 | Layer | Status | Pointer |
 |---|---|---|
 | **TARGET** | **Done** | CLI `--target-degree` / `target_degree` in `rde.synthesis.search.synthesize`; `meets_target` in `rde.synthesis.recurrence` |
-| **ALGORITHM** | **Done (catalog + search)** | 10 verbs + skeleton catalog (`rde.synthesis.skeleton`); recurrence solver master / subtract / flat (`rde.synthesis.recurrence`); two-stage search (`rde.synthesis.search`); [ALGO-057](../../../docs/algorithms/ALGO-057_rde-hierarchical-synthesis-backward-target-search.md) |
+| **ALGORITHM** | **Done (catalog + search)** | 10 verbs + skeleton catalog (`rde.synthesis.skeleton`); recurrence solver master / subtract / flat (`rde.synthesis.recurrence`); two-stage search (`rde.synthesis.search`) |
 | **Complexity pruning (pre-domain)** | **Done** | Symbolic `solve_recurrence` **before** any domain call; tests in `tests/rde/test_synthesis_recurrence.py` |
 | **Reference domain (toy)** | **Done** | `block_separable` — `rde.testing.block_separable.BlockSeparableDomain`; rediscovery tests in `tests/rde/test_synthesis_search.py` |
-| **Stage A QUBO domains** | **Done** | `src/rde_domains/qubo_synthesis/` (`qubo_separable`, `qubo_dense_control`); [ALGO-058](../../../docs/algorithms/ALGO-058_qubo-interaction-component-synthesisdomain-stage-a.md); tests `tests/rde/domains/qubo_synthesis/test_qubo_synthesis.py`; [EXP-058](../../../experiments/EXP-058_qubo_separable_synthesis_stage_a/) |
+| **Real domain** | **Done** | `TspSynthesisDomain` (`tsp_clustered` planted / `tsp_uniform_control`) — `src/rde_domains/tsp/domain.py`; tests `tests/rde_domains/test_tsp_synthesis.py` |
 | **MATHEMATICAL OPERATIONS DSL** | **Not built** | — |
 | **COMPUTATIONAL REPRESENTATION** | **Not built** | — |
 | **QUANTUM ENCODING** | **Not built** | — |
@@ -109,18 +108,17 @@ the code.
 | **GATES** | **Not built** | — |
 | **Gate-level resource accounting** (\(G\), \(D\), \(N_q\), \(N_{\mathrm{ancilla}}\)) | **Not built** | Recurrence-level \(\Theta(\cdot)\) classes exist; circuit resource ledgers for synthesized skeletons do not |
 | **Protocol extensions** (treewidth / low-rank / …) | **Not built** | Domain-specific generators may support forward discovery; they are not synthesis-protocol extensions |
-| **Query-tape recovery** (HSP extractors) | **Partial** | `RecoveryDomain` + collision catalog ([ALGO-063](../../../docs/algorithms/ALGO-063_bounded-query-hidden-structure-recovery-extractors.md)); not divide/combine |
+| **Query-tape recovery** (HSP extractors) | **Partial** | `RecoveryDomain` + collision catalog (`rde.recovery`); not divide/combine |
 
 ### Known gaps inside the implemented top
-
-Documented in ALGO-057 Notes and enforced in code:
 
 - **`subtract`-shaped skeletons** are symbolically solved and pruned, but there
   is no `SynthesisDomain` hook for size-minus-constant decomposition — they
   report `rejected_unsupported` even when they meet the complexity budget.
 - Catalog stays deliberately small (`flat` / constant-branching `divide` /
   `subtract` / `base`); no search over arbitrary arithmetic expressions.
-- Compilation below ALGORITHM is explicitly out of scope for ALGO-057.
+- Compilation below ALGORITHM is explicitly out of scope for the current
+  implementation.
 
 ---
 
@@ -154,9 +152,9 @@ Use the methodology letter chain \(P\to Z\to X\to E\to S\to O\) (forward) and
 ## 5. How this relates to PZXESO
 
 Compilation depth is methodology §5, **inside Mode 2 only**. Outcome strength
-is G0–G5. Reverse stress tests are V1–V4. ALGO-057 is TARGET + ALGORITHM +
-pre-domain recurrence pruning. Lower compilation steps need their own ALGO
-cards before experiments rely on them.
+is G0–G5. Reverse stress tests are V1–V4. The current implementation covers
+TARGET + ALGORITHM + pre-domain recurrence pruning. Lower compilation steps
+need their own design note before anything relies on them.
 
 ---
 
@@ -168,13 +166,12 @@ Grades G0–G5 are a different axis.
 | Stage | Instance class | Intent | Status (Aug 2026) |
 |---|---|---|---|
 | **V1** | Known polynomial algorithms (matching, shortest path, …) **or** a toy with planted independent blocks | Rediscover a known poly skeleton; reject exponential brute force on complexity alone | **Partial:** `block_separable` toy rediscovery **done** (`tests/rde/test_synthesis_search.py`). Independent V1 on classical matching / shortest-path domains **not** built. |
-| **V2** | Artificial hidden structure (planted, possibly permuted) | Structure must be *detected*, not handed pre-split | **Done:** `qubo_separable` / `qubo_dense_control` ([ALGO-058](../../../docs/algorithms/ALGO-058_qubo-interaction-component-synthesisdomain-stage-a.md), [EXP-058](../../../experiments/EXP-058_qubo_separable_synthesis_stage_a/)). Treatment accepts `flat` at \(\Theta(n)\); dense control accepts nothing; blind contiguous splitter is `rejected_incorrect`. |
-| **V3** | Structured QUBO families (treewidth, low-rank, band, …) with honest size accounting | Protocol / catalog extensions beyond block-separability | **Not built** for synthesis |
-| **V4** | General / dense QUBO | Either a verified poly skeleton or a scoped negative under an explicit catalog quantifier | **Not built** — and must not be claimed from V1 toy success |
+| **V2** | Artificial hidden structure (planted, possibly permuted) | Structure must be *detected*, not handed pre-split | **Done:** `tsp_clustered` / `tsp_uniform_control`. Treatment accepts a decomposed skeleton when the planted cluster gap holds; control accepts nothing; a blind contiguous splitter is `rejected_incorrect`. |
+| **V3** | Structured families (treewidth, low-rank, band, …) with honest size accounting | Protocol / catalog extensions beyond block-separability | **Not built** for synthesis |
+| **V4** | General / dense instances | Either a verified poly skeleton or a scoped negative under an explicit catalog quantifier | **Not built** — and must not be claimed from V1 toy success |
 
 **Non-claim:** Passing V1 on `block_separable` does **not** imply V3–V4
-progress, does **not** imply a poly(\(N\)) quantum algorithm, and does **not**
-close Direction A.
+progress and does **not** imply a poly(\(N\)) quantum algorithm.
 
 ---
 
@@ -190,7 +187,7 @@ genuine operation on the instance — **never** derived from
 partition smuggles the answer into the skeleton; acceptance then becomes a
 tautology.
 
-**Search-side guards already in ALGO-057:**
+**Search-side guards already in place:**
 
 1. Symbolic complexity prune **before** domain calls.
 2. Independent `cost(instance, assignment)` re-evaluation — do not trust a
@@ -199,7 +196,7 @@ tautology.
    verification, not as an input to decomposition.
 4. Honest size parameters: reporting a coarser size than the true exponential
    base (e.g. hiding \(2^N\) behind “number of blocks”) is the same trap in
-   accounting form — called out explicitly in the Stage A QUBO domain design.
+   accounting form.
 
 Project-wide parallel: methodology §8 (do not work backward from the answer);
 leak/tautology audits on forward conjectures.
@@ -211,11 +208,11 @@ leak/tautology audits on forward conjectures.
 | Item | Status |
 |---|---|
 | Forward discovery apparatus | **Done** (engineering) |
-| Mode 2 TARGET + ALGORITHM + recurrence engine | **Done** ([ALGO-057](../../../docs/algorithms/ALGO-057_rde-hierarchical-synthesis-backward-target-search.md)) |
+| Mode 2 TARGET + ALGORITHM + recurrence engine | **Done** |
 | `rde synthesize` CLI + `synthesis_conjectures.jsonl` | **Done** |
 | `block_separable` reference `SynthesisDomain` | **Done** |
 | Trap wording in `SynthesisDomain` protocol | **Done** |
-| Stage A `qubo_separable` / `qubo_dense_control` | **Done** ([ALGO-058](../../../docs/algorithms/ALGO-058_qubo-interaction-component-synthesisdomain-stage-a.md), [EXP-058](../../../experiments/EXP-058_qubo_separable_synthesis_stage_a/)) |
+| `tsp_clustered` / `tsp_uniform_control` treatment/control pair | **Done** |
 
 ---
 
@@ -224,14 +221,14 @@ leak/tautology audits on forward conjectures.
 Ordered roughly by dependency:
 
 1. **Independent V1 domains** — matching / shortest-path (or similar known
-   poly problems) as `SynthesisDomain` fixtures, separate from QUBO.
+   poly problems) as `SynthesisDomain` fixtures.
 2. **MATHEMATICAL OPERATIONS DSL** — restricted language implementing accepted
    skeletons; parity tests against classical reference.
 3. **COMPUTATIONAL REPRESENTATION** layer — explicit data structures for the DSL.
 4. **QUANTUM ENCODING → REVERSIBLE OPS → GATES** — each step needs its own
-   `ALGO-NNN` before experiments; gate-level \((G,D,N_q,N_{\mathrm{ancilla}})\)
-   accounting.
-5. **Protocol extensions** — treewidth / low-rank / other structured QUBO
+   design note before anything relies on it; gate-level
+   \((G,D,N_q,N_{\mathrm{ancilla}})\) accounting.
+5. **Protocol extensions** — treewidth / low-rank / other structured
    families as synthesis hooks (V3), without weakening honest
    size / complexity reporting.
 6. Keep PZXESO as the only letter vocabulary in docs; it is not a Python API.
@@ -240,12 +237,11 @@ Ordered roughly by dependency:
 
 ## 10. Non-claims (read before citing)
 
-- This page does **not** prove that a poly(\(N\))-gate / poly(\(N\))-shot QUBO
-  algorithm exists.
-- Mode 2 success on `block_separable` is a **machinery + V1 toy** result,
-  not a QUBO theorem.
+- This page does **not** prove that a poly(\(N\))-gate / poly(\(N\))-shot
+  quantum algorithm exists for any domain here.
+- Mode 2 success on `block_separable` is a **machinery + V1 toy** result.
 - Lower compilation steps (math DSL through gates) are **absent**; do not
-  describe ALGO-057 as a circuit compiler.
+  describe the current implementation as a circuit compiler.
 - Mode 1 engineering being “done” means the **search apparatus** exists, not
   that G4–G5 outcomes were achieved on campaign science.
 - PZXESO is the canonical methodology; it is not a Python API.
@@ -261,8 +257,7 @@ Ordered roughly by dependency:
 # Cap accepted polynomial degree
 .venv/bin/python3 -m rde synthesize --domain block_separable --size 6 --n-instances 10 --target-degree 2
 
-# Stage A domains (genuine Q; planted vs dense control)
-.venv/bin/python3 -m rde synthesize --domain qubo_separable --size 12 --n-instances 4
-.venv/bin/python3 -m rde synthesize --domain qubo_dense_control --size 12 --n-instances 4
-.venv/bin/python3 experiments/EXP-058_qubo_separable_synthesis_stage_a/run.py
+# Real domain (planted vs uniform control)
+.venv/bin/python3 -m rde synthesize --domain tsp_clustered --size 12 --n-instances 4
+.venv/bin/python3 -m rde synthesize --domain tsp_uniform_control --size 12 --n-instances 4
 ```

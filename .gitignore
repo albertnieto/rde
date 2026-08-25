@@ -233,14 +233,3 @@ rde_runs/
 outputs/
 
 .venv.py310.bak
-
-# EXP-013 search checkpoints (regenerable; keep verified_top.json + results.md)
-experiments/EXP-013_structural_u_acum_search/search_output/checkpoint.jsonl
-experiments/EXP-013_structural_u_acum_search/search_output_post_fix/checkpoint.jsonl
-
-# EXP-034 free-form search output (regenerable in seconds; keep results.md)
-experiments/EXP-034_freeform_pauli_operator_search/exp034_leaderboard.json
-experiments/EXP-034_freeform_pauli_operator_search/exp034_progress.jsonl
-
-# EXP-031 search traces (regenerable; keep summaries, gate reports, stage1_discovery.json)
-experiments/EXP-031_structured_qubo_protocol_discovery/**/search_trace.jsonl

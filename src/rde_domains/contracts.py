@@ -73,6 +73,19 @@ def hsp_functions_contract() -> DomainContract:
             notes="re-exposure of hsp_sample.f.detected_period_divisor_fraction under a gate-recognized prefix",
         ),
         FeatureSpec(
+            "repr.best_complexity",
+            FeatureOrigin.POLYNOMIAL_INPUT,
+            True,
+            source_primitive="diff_profile",
+            asymptotic_cost="poly",
+            notes=(
+                "rde.representation.rank_representations' lowest verified "
+                "complexity over diff_profile (the fixed 7-primitive grammar); "
+                "leak-free by the same argument as diff_profile itself -- never "
+                "reads structure_strength"
+            ),
+        ),
+        FeatureSpec(
             "hsp_oracle.*",
             FeatureOrigin.ENUMERATED_ORACLE,
             False,
@@ -130,6 +143,19 @@ def tsp_landscape_stats_contract() -> DomainContract:
     specs = (
         FeatureSpec("matrix.D.*", FeatureOrigin.POLYNOMIAL_INPUT, True, source_primitive="D"),
         FeatureSpec("graph.D.*", FeatureOrigin.POLYNOMIAL_INPUT, True, source_primitive="D"),
+        FeatureSpec(
+            "repr.best_complexity",
+            FeatureOrigin.POLYNOMIAL_INPUT,
+            True,
+            source_primitive="D",
+            asymptotic_cost="poly",
+            notes=(
+                "rde.representation.rank_representations' lowest verified "
+                "complexity over the upper-triangular distance profile of D "
+                "(the fixed 7-primitive grammar); leak-free by the same "
+                "argument as matrix.D.* itself -- never reads tour costs"
+            ),
+        ),
         FeatureSpec("landscape.costs.*", FeatureOrigin.ENUMERATED_ORACLE, False, source_primitive="costs", asymptotic_cost="exp"),
         FeatureSpec("spectral.*", FeatureOrigin.ENUMERATED_ORACLE, False, source_primitive="costs"),
         FeatureSpec("stats.*", FeatureOrigin.ENUMERATED_ORACLE, False, source_primitive="costs"),

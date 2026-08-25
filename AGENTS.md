@@ -16,11 +16,6 @@ Read the in-package docs before changing science or pipeline behavior:
 - [`src/rde/docs/experiment-playbook.md`](src/rde/docs/experiment-playbook.md)
 - [`src/rde/docs/README.md`](src/rde/docs/README.md) — CLI
 
-Domain charters:
-
-- [`docs/research/hidden-subgroup-function-discovery-charter.md`](docs/research/hidden-subgroup-function-discovery-charter.md)
-- [`docs/research/tsp-novel-representation-discovery-charter.md`](docs/research/tsp-novel-representation-discovery-charter.md)
-
 ## Test boundary
 
 - `tests/rde/` — core-only; must not import `rde_domains`

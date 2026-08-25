@@ -1,17 +1,12 @@
 """Bounded-query descriptor computation for hsp_functions instances.
 
-Implements the query-only access model the charter's fixed contract
-(S4.1) requires: every predictor-eligible descriptor below is computed
-from a poly(n_bits) random sample of oracle calls
-(query_budget_for: O(n^2) with confirmatory-horizon leading constant)
--- never from the full 2^n_bits table. A separate, explicitly-gated
-oracle-only exact tier exists for small-n audit/calibration use only (Gate
-0 mechanism validation), matching this project's `max_bruteforce_n`
-convention.
-
-See docs/research/hidden-subgroup-function-discovery-charter.md S4.1 and
-docs/algorithms/ (the ALGO card for this subroutine, registered before any
-experiment relies on it).
+Implements this domain's fixed query-only access model: every
+predictor-eligible descriptor below is computed from a poly(n_bits) random
+sample of oracle calls (query_budget_for: O(n^2) with confirmatory-horizon
+leading constant) -- never from the full 2^n_bits table. A separate,
+explicitly-gated oracle-only exact tier exists for small-n audit/calibration
+use only (Gate 0 mechanism validation), matching this project's
+`max_bruteforce_n` convention.
 """
 
 from __future__ import annotations
@@ -26,7 +21,7 @@ MAX_ORACLE_N_BITS = 14  # mirrors this project's existing brute-force enumeratio
 #: Leading constant of the O(n^2) budget. For a 2-to-1 hidden-shift function
 #: (Simon / period / dihedral coset), two uniform samples collide on the
 #: hidden pair with probability ~2^{-n}, so a B-sample has expected pair
-#: count λ = B² / 2^{n+1}. EXP-065's first confirmatory run used c=8
+#: count λ = B² / 2^{n+1}. An initial calibration run used c=8
 #: (B=8n² ⇒ λ≈0.64 at n=24, held-out recall ≈0.51). c=20 gives λ≈3.95 at
 #: n=24 (P(miss)≈e^{-λ}≈0.02) while remaining poly(n) and B ≪ 2^n
 #: (11520 vs 2^24). This is a confirmatory-horizon calibration, not an
@@ -69,12 +64,10 @@ def sample_difference_estimates(inst: FunctionInstance, rng: np.random.Generator
     `query_budget_for` (not a small fixed constant): each g(d) estimate is
     a `hits/sub_budget` fraction, so a too-small denominator quantizes
     every instance's derived statistics onto the same few coarse values
-    regardless of its actual random secret -- confirmed empirically as the
-    root cause of EXP-064's Gate-0 population-distinctness failures (a
-    small denominator made genuinely different instances collide onto
-    identical rounded structural feature vectors, tripping
-    `rde.experiment.gate.distinct_structural_instances`, which is exact-
-    float-tuple equality with no rounding tolerance).
+    regardless of its actual random secret -- a small denominator makes
+    genuinely different instances collide onto identical rounded structural
+    feature vectors, tripping `rde.experiment.gate.distinct_structural_instances`,
+    which is exact-float-tuple equality with no rounding tolerance.
     """
     sub_budget = max(64, 8 * inst.n_bits)
     candidates = (

@@ -223,6 +223,22 @@ def _run_discovery_body(
 
             domain_id = Store(store_root).read_manifest(run_id).domain_id
         return domain_id
+
+    def _domain_id_or_none() -> str | None:
+        """Best-effort `_domain_id()` for optional, fail-open contract filtering.
+
+        Candidate-variable-selection call sites (`domain_id=` on
+        `metric_variable_columns`/`rank_descriptor_generators`) must not
+        turn a missing/malformed manifest into a fatal error — `domain_id`
+        there is already fail-open (`None` just skips contract filtering);
+        only the call sites that genuinely require a domain_id use
+        `_domain_id()` directly.
+        """
+        try:
+            return _domain_id()
+        except (FileNotFoundError, OSError, ValueError, KeyError):
+            return None
+
     rows = ctx.rows
     report = DiscoveryReport(run_id=run_id, target=resolved_target, n_rows=len(rows))
     # Keyed on the population, not just the run_id: re-running with a changed
@@ -340,7 +356,9 @@ def _run_discovery_body(
                 "rerun the campaign with save_arrays=True (missing array_ref/arrays payloads)"
             )
 
-    vars_ = metric_variable_columns(rows, resolved_target, max_vars=max(top_features, 8))
+    vars_ = metric_variable_columns(
+        rows, resolved_target, max_vars=max(top_features, 8), domain_id=_domain_id_or_none()
+    )
     X, cols = ctx.feature_matrix()
     target_arr = X[:, cols.index(resolved_target)]
     feat_cols = [c for c in cols if c != resolved_target][:top_features]
@@ -396,6 +414,7 @@ def _run_discovery_body(
                     on_progress=progress_cb("descriptor generators"),
                     force_gpu=force_gpu,
                     require_gpu=require_gpu,
+                    domain_id=_domain_id_or_none(),
                 )
             ),
             fallback=[],

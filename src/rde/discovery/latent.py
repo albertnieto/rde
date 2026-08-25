@@ -200,13 +200,32 @@ def discover_latent_from_run(
     target_column: str = "metric.representation_complexity",
     n_components: int = 8,
     exclude_prefixes: tuple[str, ...] = ("metric.", "run_id"),
+    domain_id: str | None = None,
     checkpoint: bool = True,
 ) -> LatentResult:
+    """PCA over predictor columns, with `metric.*`/`run_id` plus contract-excluded columns dropped.
+
+    `exclude_prefixes` alone misses a raw un-prefixed `OUTCOME` scalar a
+    domain re-exposes for its own bookkeeping (e.g. `hsp_functions`'s
+    `structure_strength`) -- same leak `contract_excluded_columns` was built
+    to close for `metric_variable_columns`/`descriptor_variable_columns`,
+    just not previously applied to PCA's own feature set: without it, PC1
+    can trivially recover the target from its own leaked ground truth.
+    """
+    from rde.analyze.tables import contract_excluded_columns
+    from rde.io.store import Store
+
     X, cols, rows = load_feature_matrix(run_id, store_root, target=target_column)
+    if domain_id is None:
+        try:
+            domain_id = Store(store_root).read_manifest(run_id).domain_id
+        except (FileNotFoundError, OSError, ValueError, KeyError):
+            domain_id = None
+    excluded = contract_excluded_columns(rows, domain_id)
     use_cols = [
         c
         for c in cols
-        if c != target_column and not any(c.startswith(p) for p in exclude_prefixes)
+        if c != target_column and c not in excluded and not any(c.startswith(p) for p in exclude_prefixes)
     ]
     idx = [cols.index(c) for c in use_cols]
     target = np.array([row.get(target_column, float("nan")) for row in rows], dtype=float)

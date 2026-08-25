@@ -1,6 +1,6 @@
-"""Real RDE Metric registrations for tsp_landscape_stats (EXP-063).
+"""Real RDE Metric registrations for tsp_landscape_stats.
 
-Audited 2026-08-19: the targets (near_optimal_fraction etc.) were
+The targets (near_optimal_fraction etc.) were
 originally hand-computed inside `primitive_features()` with keys
 hand-prefixed `"metric.<name>"`. That looks like a metric but isn't one --
 `write_clean_discovery_run()` (src/rde/experiment/merge.py) only preserves

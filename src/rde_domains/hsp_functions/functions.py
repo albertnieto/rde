@@ -1,12 +1,12 @@
-"""Analytic, query-evaluable oracle-function families (Direction F).
+"""Analytic, query-evaluable oracle-function families.
 
 Every family below defines f: X -> label via a closed-form construction
 evaluable at a single point x in O(1) time with no table materialization,
 so the domain can be queried a bounded number of times regardless of how
-large X is -- the query/oracle access model the charter's fixed contract
-(S4.1) requires non-negotiably. This also means N can be pushed far larger
-than this project's usual brute-force-enumeration cap (`max_bruteforce_n`),
-since nothing here ever needs to materialize a length-2^n table except the
+large X is -- the query/oracle access model this domain's contract requires
+non-negotiably. This also means N can be pushed far larger than this
+project's usual brute-force-enumeration cap (`max_bruteforce_n`), since
+nothing here ever needs to materialize a length-2^n table except the
 small, explicitly-gated oracle-only calibration audit.
 
 Each family carries a `structure_strength` in [0, 1], fixed at generation
@@ -17,7 +17,7 @@ proven pattern already used successfully in this repo by
 `tsp_circulant_symmetry` (`symmetry_break_param` -> `circulant_deviation`),
 generalized here from geometric symmetry-breaking to algebraic
 coset-structure-breaking. It must never be exposed to predictor-eligible
-descriptors (see `docs/research/hidden-subgroup-function-discovery-charter.md`).
+descriptors.
 """
 
 from __future__ import annotations
@@ -30,14 +30,13 @@ import numpy as np
 FAMILIES_HELD_OUT = ("simon", "shor_cyclic", "dihedral_kuperberg")
 FAMILIES_DISCOVERY = ("structure_break_abelian", "abelian_dihedral_blend", "generic_random_control")
 ALL_FAMILIES = FAMILIES_HELD_OUT + FAMILIES_DISCOVERY
-# Phase-3 discovery roster (EXP-066): non-abelian pairings that are not
-# dihedral, plus the same structureless control. Default ALL_FAMILIES is
-# unchanged so EXP-064/065 regenerate and existing tests stay on the
-# original six families.
+# An alternative discovery roster: non-abelian pairings that are not
+# dihedral, plus the same structureless control. Default ALL_FAMILIES stays
+# unchanged so existing tests stay on the original six families.
 FAMILIES_PHASE3_DISCOVERY = ("heisenberg_noncentral", "quaternion_coset", "generic_random_control")
 PHASE3_POPULATION = FAMILIES_HELD_OUT + FAMILIES_PHASE3_DISCOVERY
-# Path-B encoding control (EXP-067 follow-up): same Heisenberg cosets but v XORs
-# into the low register b instead of high register a. Not a discovery family.
+# Path-B encoding control: same Heisenberg cosets but v XORs into the low
+# register b instead of high register a. Not a discovery family.
 PATH_B_HEISENBERG_FAMILY = "heisenberg_v_low_register"
 KNOWN_FAMILIES = tuple(
     dict.fromkeys(

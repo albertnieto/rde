@@ -153,9 +153,8 @@ def all_tour_costs(D: np.ndarray, cities: Sequence[int]) -> np.ndarray:
     duplication. Also deduplicates direction (keeps only `perm[0] < perm[-1]`):
     a tour and its exact reverse traverse the same edges and always have
     identical cost, so leaving both in means the minimum always appears at
-    least twice -- caught empirically (2026-08-19, EXP-063 design check):
-    `cost_spectral_gap_ratio` was exactly 0.0 on every one of 60 real
-    instances because "second-best" was trivially the optimal tour's own
+    least twice -- without deduplication, `cost_spectral_gap_ratio` is
+    trivially 0.0 because "second-best" is just the optimal tour's own
     reverse, not a genuinely different tour. `(N-1)!/2` distinct tours, not
     `(N-1)!`. Exact, exponential/factorial by design -- callers must guard
     `len(cities)` (see `validate_bruteforce_size`).

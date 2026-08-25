@@ -112,7 +112,7 @@ the cache (e.g. `costs`) instead of re-enumerating.
 `primitive_features()` must expose the **raw arrays** the forward catalog
 needs (`D`, `diff_profile`, `costs`, …), not a handful of scalars derived from
 one hand-authored mechanism. A domain that only returns three mechanism
-scalars starves Mode 1 (the Direction E TSP incident).
+scalars starves Mode 1.
 
 ### Two operating modes (same stack)
 
@@ -196,10 +196,93 @@ src/rde/
 ├── expression/         # Metric DSL + mlx/torch eval
 ├── discovery/          # Latent, symbolic, GP, operator
 ├── synthesis/          # Mode 2 (ALGO-057)
+├── representation/     # Representation Core (experimental, see below)
 ├── testing/            # toy domains + store stress helpers
 │
 └── docs/               # This file, CLI README, implementation status
 ```
+
+### Representation Core (experimental)
+
+`representation/` formalizes a representation of an object as a first-class
+artifact — `Object`, `Representation` (carrier + encode/decode + optional
+distance/complexity), `Transformation` (an edge between two representations
+of the same object type), `EquivalenceResult`, and `Certificate` — separate
+from the P/Z/X/E/S/O pipeline above. It exists so a representation's
+roundtrip claim (`decode(encode(x)) == x`) can be stated and certified
+without conflating "encoding" with "feature extraction."
+
+Phase 1 shipped the primitive types and a single numerical-roundtrip
+equivalence check, exercised against generic reference representations
+(vector/matrix/polynomial) in `tests/rde/representation/`. Phase 2 added
+`RepresentationGraph`: representations as nodes, `Transformation`s as costed
+edges, cheapest-path search (`find_path`), multi-hop composition
+(`TransformationPath`), and pairwise certificate comparison (`compare`).
+
+Phases 3-6 (`array_backend.py`, `grammar.py`, `search.py`, `symbolic.py`,
+`pareto.py`, `operator.py`) added:
+
+- a dual-backend (NumPy always, MLX on Apple Silicon) batched numeric
+  kernel layer, mirroring `rde.backends`' `NumpyBackend`/`MlxBackend` split;
+- a fixed six-primitive representation grammar (identity, matrix reshape,
+  compact/full DFT, first-difference, sorted+permutation,
+  polynomial-in-a-fixed-basis) and exhaustive complexity ranking against a
+  batch of sample data — deliberately exhaustive, not beam/evolutionary
+  search, because six primitives makes a heuristic search algorithm
+  complexity for its own sake (see `search.py`);
+- `FormalCertificate` (SymPy exact-rational `proved`/`disproved`), kept
+  textually distinct from the numeric `Certificate`
+  (`verified`/`refuted`) so the two are never conflated;
+- vectorized Pareto dominance/frontier ranking over representation
+  objectives, with no default single-number Q(R) scalarization (an
+  explicit opt-in one is offered — see `pareto.py` for why an implicit one
+  would encode arbitrary weights as if they were discovered);
+- operator transport (`E_R @ U @ D_R`) and `off_diagonal_energy`,
+  reproducing the textbook fact that the full complex DFT diagonalizes
+  circulant operators using the grammar's own `dft_full` primitive
+  (verified numerically, not asserted — see `tests/rde/representation/test_operator.py`).
+
+Phase 7 ("open discovery" — an object through the whole O/R/S/A/C pipeline)
+is exercised as an integration test
+(`tests/rde/representation/test_open_discovery_integration.py`) composing
+Phases 1-6 as they already exist, not as new library code.
+
+A follow-up audit against the original proposal (prompted by "is this
+100% implemented" — it wasn't) closed several real gaps: `cost.py`
+(conversion cost as a genuine third Pareto objective), `equivalence_types.py`
+(typed equivalence beyond numeric roundtrip — this also found and fixed a
+latent unsoundness in probing `dft`'s decode side), `operator_discovery.py`
+(recovering an *unknown* operator from samples, not just transporting a
+known one), `structure.py` (a small checkable structure vocabulary),
+`holdout.py` (an anti-cheating audit over a genuinely withheld primitive
+subset), `report.py` + `cli/commands.py`'s `rde repr-rank` (a durable
+report and a CLI surface), and domain-side integration
+(`rde_domains/hsp_functions/representations.py`,
+`rde_domains/tsp/representations.py` — outside this package, since core
+must not import domain plugins) running the grammar/search machinery on
+real hsp_functions/TSP data. Core still ships no domain-specific
+representations of its own — same core/domain boundary as everywhere else
+in this file.
+
+A second pass (prompted by "let's take more iterations to full scope")
+closed the rest of what that audit had flagged as missing, except one
+item left deliberately open: `rde repr-rank-run` reads an array field a
+real `run`/`campaign` already stored (`Store`) and ranks it, writing back
+through a new `Store.append_representation_report` — pipeline wiring and
+full persistence, verified not to modify `run`/`campaign`'s own output.
+What is still NOT done, on purpose: touching `hsp_functions/domain.py`'s
+`primitive_features()` to add representation-complexity as a real Mode 1
+predictor descriptor and running it through
+`correlate_with_target`/`assess_outcome`'s G0-G5 gates — a larger change
+than a gap-closure pass should make without explicit sign-off.
+`hsp_functions/preregistered_experiment.py` is the
+honest substitute: a standalone preregistered statistical check, run once,
+reporting its actual (mixed) result rather than a curated one.
+Canonicalization and search *over new representations* (as opposed to
+ranking the fixed grammar) remain unimplemented — these are open-ended
+program-synthesis problems, not bounded tasks; see
+`rde/representation/__init__.py` for the current, maintained scope
+statement.
 
 Engineering chronology (what shipped when): [`roadmap.md`](roadmap.md).
 

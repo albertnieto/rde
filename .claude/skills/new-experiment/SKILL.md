@@ -39,7 +39,8 @@ audit, and full discovery loop.
 
 Create `experiments/EXP-NNN_<slug>/` with:
 
-- **README.md** — question, domain, charter link (`docs/research/`)
+- **README.md** — question, domain, access model, predictors, targets,
+  held-out families, stop rule
 - **run.py** — executable; use RDE live progress + durable logs
 - **results.md** — What was tested / Results / Interpretation
 - **PREREGISTRATION.md** — for discovery experiments (from template)
@@ -55,4 +56,6 @@ ls -la experiments/EXP-NNN_<slug>/
 
 - Slug is kebab-case from the experiment topic.
 - A `run_pipeline`-only harness is a regression test, not a discovery experiment.
-- Read the domain charter under `docs/research/` when working on HSP or TSP.
+- Read the domain's `DomainContract` in `src/rde_domains/contracts.py` when
+  working on HSP or TSP — access model, predictors, targets, and held-out
+  families live there, not in a separate document.

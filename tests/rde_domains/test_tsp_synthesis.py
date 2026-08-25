@@ -1,4 +1,4 @@
-"""TSP SynthesisDomain (Direction E) -- genuine distance matrix, MST-gap detection.
+"""TSP SynthesisDomain -- genuine distance matrix, MST-gap detection.
 
 Treatment ``tsp_clustered`` plants two well-separated spatial clusters so
 only genuine MST-gap detection (not a hand-fed grouping) recovers them.

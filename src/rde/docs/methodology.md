@@ -15,9 +15,7 @@ admits a polynomial algorithm.
 - [RDE README / CLI](README.md) — entry and commands
 - [RDE architecture](ARCHITECTURE.md) — code pipeline
 - [Mode 2 compilation depth](hierarchical-synthesis.md) — TARGET → primitives
-  staging for reverse synthesis (ALGO-057)
-- Domain charters under `../../../docs/research/` — *instances* of this methodology, not
-  forks of it
+  staging for reverse synthesis
 
 ---
 
@@ -141,10 +139,10 @@ There is **no third mode**.
 
 Mode 2 has two executable surfaces, both answering the same question:
 
-- **`SynthesisDomain`** — divide / combine recurrences (ALGO-057; QUBO /
-  block-separable skeletons).
+- **`SynthesisDomain`** — divide / combine recurrences (block-separable
+  and TSP-clustered skeletons).
 - **`RecoveryDomain`** — query-tape extractors under a declared query
-  budget (ALGO-063; hidden-subgroup recovery). Pearson correlation of a
+  budget (hidden-subgroup recovery). Pearson correlation of a
   descriptor against a family label is Mode 1 and is **not** a substitute
   for either surface.
 
@@ -196,10 +194,10 @@ T(n)=2\,T(n-1)+\mathrm{poly}(n)
 \]
 
 **Implementation note (not methodology):** as of August 2026, code covers
-TARGET + ALGORITHM + pre-domain recurrence pruning
-([ALGO-057](../../../docs/algorithms/ALGO-057_rde-hierarchical-synthesis-backward-target-search.md)).
-Lower compilation steps are future work. Status belongs in an implementation
-status doc, not here.
+TARGET + ALGORITHM + pre-domain recurrence pruning (see
+[hierarchical-synthesis.md](hierarchical-synthesis.md)). Lower compilation
+steps are future work. Status belongs in an implementation status doc, not
+here.
 
 ---
 
@@ -295,9 +293,8 @@ once and passes `cache=` into both methods. This is an engineering contract
 for honest **Z** measurement, not a new science letter. Details:
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-Example (illustrative, not a claim of generality): interaction-component QUBO
-synthesis ([ALGO-058](../../../docs/algorithms/ALGO-058_qubo-interaction-component-synthesisdomain-stage-a.md),
-[EXP-058](../../../experiments/EXP-058_qubo_separable_synthesis_stage_a/)) is
+Example (illustrative, not a claim of generality): `rde.testing.block_separable`
+(a block-diagonal cost function, treatment/control skeleton search) is
 **Mode 2**, search at ALGORITHM / \(Z\)-skeleton depth, validation **V2** on
 planted vs dense controls — an *instance* of this methodology.
 
@@ -317,8 +314,7 @@ explicit representation class, model, query set, family, and budget.
 
 Do not introduce a second numbered science stack. Status claims use §12.
 Engineering chronology belongs in `src/rde/docs/roadmap.md`, not here
-(ship slices 0–6 are implementation order, not G0–G5). Live protocol:
-[hypothesis-preregistration-v0.4.md](../../../docs/engineering/rde-hypothesis-preregistration-v0.4.md).
+(ship slices 0–6 are implementation order, not G0–G5).
 
 ---
 
@@ -334,9 +330,9 @@ Every “done / partial / not built” line must state:
 
 Example of a correct claim:
 
-> EXP-058: Mode 2; compilation = TARGET+ALGORITHM; validation = V2; outcome =
-> rediscovery of a flat skeleton on planted separable QUBO — not V3/V4, not a
-> general poly algorithm.
+> `block_separable`: Mode 2; compilation = TARGET+ALGORITHM; validation = V2;
+> outcome = rediscovery of a flat skeleton on a planted block-separable cost
+> function — not V3/V4, not a general poly algorithm.
 
 ---
 

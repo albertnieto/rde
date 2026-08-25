@@ -9,18 +9,17 @@ Use when adding a domain beyond HSP/TSP to this repository.
 
 ## Checklist
 
-1. **Charter** — add `docs/research/<domain>-charter.md` with access model,
-   predictors, targets, held-out families, and stop rules.
-2. **Package** — create `src/rde_domains/<slug>/` with `domain.py`, metrics,
+1. **Package** — create `src/rde_domains/<slug>/` with `domain.py`, metrics,
    generators as needed. No imports from other domain packages unless shared
    utilities are extracted deliberately.
-3. **Contract** — add `DomainContract` to `src/rde_domains/contracts.py` with
-   leak-audited `FeatureSpec` entries.
-4. **Entry point** — register in `src/rde_domains/plugins.py` and both
+2. **Contract** — add `DomainContract` to `src/rde_domains/contracts.py` with
+   leak-audited `FeatureSpec` entries (access model, predictors, targets,
+   held-out families — in the contract itself, not a separate document).
+3. **Entry point** — register in `src/rde_domains/plugins.py` and both
    `pyproject.toml` files (`project.entry-points."rde.domains"`).
-5. **Tests** — add `tests/rde_domains/test_<slug>_*.py`; verify core suite still
+4. **Tests** — add `tests/rde_domains/test_<slug>_*.py`; verify core suite still
    passes without importing the adapter.
-6. **Optimization-first** — vectorize hot paths; MLX batching on Apple Silicon;
+5. **Optimization-first** — vectorize hot paths; MLX batching on Apple Silicon;
    NumPy reference parity tests.
 
 ## Verify

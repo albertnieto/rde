@@ -9,4 +9,6 @@ Follow the library contracts in `src/rde/docs/methodology.md`,
 `src/rde/docs/experiment-playbook.md`. HSP and TSP code is an `rde.domains`
 plugin; core RDE must remain adapter-independent.
 
-Domain charters live under `docs/research/`.
+Each domain's access model, predictors, targets, and held-out families live
+in its `DomainContract` (`src/rde_domains/contracts.py`), not a separate
+charter document.

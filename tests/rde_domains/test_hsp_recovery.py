@@ -79,7 +79,7 @@ def test_xor_high_half_recovers_heisenberg_v_at_n8():
 
 
 def test_path_b_xor_high_half_fails_when_v_in_low_register():
-    """Frozen EXP-067 recipe must not recover v when it lives in the low half."""
+    """Must not recover v when it lives in the low half."""
     from rde.recovery.programs import CollisionProgram
 
     inst = _exact("heisenberg_v_low_register", n_bits=8, seed=7)

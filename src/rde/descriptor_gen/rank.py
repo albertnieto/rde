@@ -10,7 +10,12 @@ from typing import Any, Iterator
 import numpy as np
 
 from rde.analyze.ranker import Conjecture, ConjectureRanker, extrapolation_r_squared
-from rde.analyze.tables import default_train_test_split, group_indices_by_size, numeric_columns
+from rde.analyze.tables import (
+    contract_excluded_columns,
+    default_train_test_split,
+    group_indices_by_size,
+    numeric_columns,
+)
 from rde.descriptor_gen.compute import template_family_executable
 from rde.descriptor_gen.materialize import load_row_arrays, materialize_template_column
 from rde.descriptor_gen.spec import DescriptorTemplate
@@ -39,14 +44,25 @@ class DescriptorCandidate:
         return 0
 
 
-def descriptor_variable_columns(rows: list[dict[str, Any]], *, target: str) -> list[str]:
-    """Numeric descriptor columns suitable for derived-generator search."""
+def descriptor_variable_columns(
+    rows: list[dict[str, Any]], *, target: str, domain_id: str | None = None
+) -> list[str]:
+    """Numeric descriptor columns suitable for derived-generator search.
+
+    `domain_id`, when given, additionally blocks any column the domain's
+    `DomainContract` explicitly marks `predictor_eligible=False` — see
+    `rde.expression.generators.metric_variable_columns` for why this
+    exists (a raw `OUTCOME` scalar re-exposed for bookkeeping, e.g.
+    `hsp_functions`'s `structure_strength`, is not caught by the
+    `"metric."`/`"gen."` prefix skip alone and correlates with the target
+    by construction). Fail-open for columns the contract doesn't catalog.
+    """
     skip = {
         target,
         "size",
         "seed",
         "family_index",
-    }
+    } | contract_excluded_columns(rows, domain_id)
     out: list[str] = []
     for col in numeric_columns(rows, exclude=skip):
         if col.startswith("metric."):
@@ -157,6 +173,7 @@ class DerivedDescriptorRanker:
     target_column: str
     min_abs_r: float = 0.25
     max_results: int = 20
+    domain_id: str | None = None
 
     def rank_expressions(
         self,
@@ -175,7 +192,9 @@ class DerivedDescriptorRanker:
             min_abs_r=self.min_abs_r,
             max_results=self.max_results,
         )
-        vars_ = variables or descriptor_variable_columns(rows, target=self.target_column)
+        vars_ = variables or descriptor_variable_columns(
+            rows, target=self.target_column, domain_id=self.domain_id
+        )
         conjectures = ranker.rank_expressions_streaming(
             rows,
             candidates,
@@ -207,8 +226,14 @@ def rank_descriptor_generators(
     on_progress: ProgressCallback | None = None,
     force_gpu: bool = False,
     require_gpu: bool = False,
+    domain_id: str | None = None,
 ) -> list[DescriptorCandidate]:
-    """Rank template and derived descriptor generators together."""
+    """Rank template and derived descriptor generators together.
+
+    `domain_id`, when given, is threaded into `descriptor_variable_columns`
+    to exclude columns the domain's `DomainContract` explicitly marks
+    non-predictor-eligible (see that function's docstring).
+    """
     out: list[DescriptorCandidate] = []
 
     def report(done: int, total: int, detail: str) -> None:
@@ -231,12 +256,13 @@ def rank_descriptor_generators(
             )
         )
     if include_derived:
-        vars_ = descriptor_variable_columns(rows, target=target)[:max_derived_vars]
+        vars_ = descriptor_variable_columns(rows, target=target, domain_id=domain_id)[:max_derived_vars]
         if vars_:
             derived_ranker = DerivedDescriptorRanker(
                 target_column=target,
                 min_abs_r=min_abs_r,
                 max_results=max_results,
+                domain_id=domain_id,
             )
             cand_iter = enumerate_expressions(
                 vars_,

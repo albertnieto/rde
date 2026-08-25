@@ -22,6 +22,37 @@ def numeric_columns(rows: list[dict[str, Any]], *, exclude: set[str] | None = No
     return out
 
 
+def contract_excluded_columns(rows: list[dict[str, Any]], domain_id: str | None) -> set[str]:
+    """Columns present in `rows` that `domain_id`'s `DomainContract` explicitly excludes.
+
+    Shared by every Mode 1 candidate-variable-selection site (`rde.expression
+    .generators.metric_variable_columns`, `rde.descriptor_gen.rank
+    .descriptor_variable_columns`, `rde.discovery.symbolic`'s equation/GP
+    feature selection) so a raw `OUTCOME`/`TARGET_DERIVED` scalar a domain
+    re-exposes for its own bookkeeping (e.g. `hsp_functions`'s
+    `structure_strength`, present so `metric.structure_strength` can be
+    computed from it) can never be silently selected as a predictor
+    candidate — found via a real tautological `R^2=1.0` "discovery"
+    (`structure_strength` predicting `metric.structure_strength`) that an
+    existing per-conjecture leak-audit check did not catch, because none of
+    these call sites consulted the contract at all before this fix.
+
+    Fail-*open*: `None` domain_id or a domain with no registered contract
+    returns an empty set (unchanged candidate pool) rather than excluding
+    everything; only columns the contract actively marks
+    `predictor_eligible=False` are excluded.
+    """
+    if domain_id is None:
+        return set()
+    from rde.core.feature_contract import catalog_for_domain
+
+    try:
+        catalog = catalog_for_domain(domain_id)
+    except KeyError:
+        return set()
+    return {c for c in numeric_columns(rows, exclude=set()) if catalog.is_explicitly_excluded(c)}
+
+
 def group_indices_by_size(rows: list[dict[str, Any]]) -> dict[Any, np.ndarray]:
     """Bucket row indices by ``size``.
 

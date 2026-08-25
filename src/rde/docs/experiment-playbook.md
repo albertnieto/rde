@@ -20,8 +20,8 @@ Related, mandatory reading:
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) —
   **code pipeline** that implements that stack (worker cache, fill vs search,
   folder map). Skipping both and going straight to a single CLI verb is how
-  Direction E (TSP) spent a full session on Mode 2 `rde synthesize` while
-  Mode 1 (descriptors → ranker → symbolic → representation search) never ran,
+  a Mode 2 `rde synthesize` run can spend a whole session while Mode 1
+  (descriptors → ranker → symbolic → representation search) never runs,
   because `primitive_features()` exposed three mechanism scalars instead of
   raw arrays.
 - [`../../../docs/engineering/agent-correction-playbook.md`](../../../docs/engineering/agent-correction-playbook.md) — recurring
@@ -35,9 +35,10 @@ Related, mandatory reading:
 - [`.claude/skills/dev-machine-profile/SKILL.md`](../../../.claude/skills/dev-machine-profile/SKILL.md)
   — session bootstrap.
 
-The worked reference implementation for everything below is
-**EXP-050** (`experiments/EXP-050_coin_shift_grammar_rediscovery/`): its
-`PREREGISTRATION.md`, `run.py`, and `results.md` are the template.
+The `new-experiment` skill scaffolds a new `experiments/EXP-NNN_<slug>/`
+directory with `PREREGISTRATION.md`, `run.py`, and `results.md` stubs
+following this playbook's gates — use it rather than hand-rolling the
+directory layout.
 
 ---
 
@@ -315,33 +316,36 @@ one, and status survives the terminal.
   plus JSONL per-stage summaries and a `tee`'d log:
 
 ```bash
-.venv/bin/python3 experiments/EXP-050_.../run.py --backend auto \
-  2>&1 | tee experiments/EXP-050_.../runs/confirmatory_$(date +%Y%m%d_%H%M%S).log
+.venv/bin/python3 experiments/EXP-NNN_<slug>/run.py --backend auto \
+  2>&1 | tee experiments/EXP-NNN_<slug>/runs/confirmatory_$(date +%Y%m%d_%H%M%S).log
 ```
 
 ---
 
-## 6. Worked example — EXP-050
+## 6. Shape of a well-run experiment
 
-`experiments/EXP-050_coin_shift_grammar_rediscovery/` is the canonical
-template. It:
+A well-run experiment, regardless of domain:
 
-1. Verifies the grammar↔harness parity (regression floor).
-2. Builds a **480-instance random-QUBO population** across \(N\in\{6,8,10,12\}\),
-   labels each by operator-mechanism family, holds out `coin_noninvolutory` and
-   `shift_holonomy`, and exposes \(Q\) to structural descriptors.
-3. **Leak-cleans** the rows (raw rows reconstruct the target at \(r=1\) via
-   `margin_T1`; cleaned rows keep only `matrix.Q.*`/`graph.Q.*`).
-4. Runs the expression ranker on the discovery split and `assess_outcome` with
-   the pre-registered gate.
+1. Verifies the domain's own harness/parity checks pass (regression floor)
+   before anything else.
+2. Builds a population large enough to see real variance, labels instances
+   by family, holds out at least one family the discovery loop never sees,
+   and exposes raw structural arrays to the descriptor sweep — not just a
+   handful of hand-picked scalars.
+3. **Leak-cleans** the rows: predictor-eligible columns must not be able to
+   reconstruct the target trivially. Audit for this explicitly; do not
+   assume a column is safe because its name sounds structural.
+4. Runs the expression ranker (or whichever Mode 1 search shape applies) on
+   the discovery split and `assess_outcome` against a *pre-registered* gate,
+   decided before the run, not chosen afterward to make the result look
+   better.
 5. Emits a verdict, top correlations (to expose size covariates), held-out-family
-   generalization, `tqdm` progress, and durable JSONL + `tee` logs.
+   generalization, real progress, and durable JSONL + `tee` logs.
 
-Its confirmatory result was an honest **documented negative** (grade 0): the
-only correlations were the trivial size covariate; the best structural
-descriptor reached \(r=0.26\), below the 0.35 gate, with no held-out
-generalization. That is a legitimate outcome — and, per the stop rule, it is
-**not** re-run with more knobs.
+A **documented negative** (grade 0 — no correlation clears the pre-registered
+gate, or no held-out generalization) is a legitimate outcome. Per the stop
+rule, a negative result is reported as found, not re-run with more knobs
+until something clears the bar.
 
 ---
 

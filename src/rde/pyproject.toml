@@ -48,6 +48,7 @@ packages = [
     "rde.features",
     "rde.generators",
     "rde.io",
+    "rde.representation",
     "rde.runtime",
     "rde.synthesis",
     "rde.testing",

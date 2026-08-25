@@ -1,4 +1,4 @@
-"""Tests for the hsp_functions RDE domain (Direction F)."""
+"""Tests for the hsp_functions RDE domain."""
 
 from __future__ import annotations
 
@@ -186,7 +186,7 @@ def test_query_budget_never_scales_with_x_size():
     assert sampling.query_budget_for(20) == sampling.query_budget_for(20)  # pure function of n_bits
     assert sampling.query_budget_for(24) == 20 * 24 * 24
     assert sampling.simon_pair_expectation(24) >= sampling.MIN_SIMON_PAIR_EXPECTATION
-    # c=8 (the EXP-065 first-run budget) is below the confirmatory-horizon bar.
+    # c=8 (an earlier, smaller calibration budget) is below the confirmatory-horizon bar.
     assert sampling.simon_pair_expectation(24, budget=8 * 24 * 24) < 1.0
 
 
@@ -631,3 +631,43 @@ def test_algorithm_class_maps_known_families_and_nan_for_unknown_gap():
     assert result["discovery_abs_r"] >= 0.35
     assert result["classifier"] == "span_period_2d_nearest_kind"
     assert result["per_n"]["8"]["recall"] == pytest.approx(1.0)
+
+
+def test_discover_latent_from_run_excludes_contract_leaked_outcome_column(tmp_path):
+    """`structure_strength` (raw OUTCOME, only `metric.structure_strength` is a legal target)
+    must never enter PCA's own feature set -- otherwise PC1 trivially recovers the target from
+    its own leaked ground truth, the exact tautological-R^2=1.0 failure mode
+    `contract_excluded_columns` was built to close for `metric_variable_columns`/
+    `descriptor_variable_columns` (see `rde.analyze.tables.contract_excluded_columns`), just not
+    previously wired into `discover_latent_from_run`.
+    """
+    from rde.discovery.checkpoint import load_latent_checkpoint
+    from rde.discovery.latent import discover_latent_from_run
+    from rde.runtime.pipeline import RunConfig, run_pipeline
+
+    reg = build_registry("hsp_functions")
+    run_pipeline(
+        RunConfig(
+            domain_id="hsp_functions",
+            n_instances=6,
+            size=8,
+            seed=11,
+            indices=[0],
+            store_root=tmp_path,
+            run_id="hsp_latent_leak",
+        ),
+        registry=reg,
+    )
+
+    from rde.analyze.query import flatten_features
+
+    rows = flatten_features("hsp_latent_leak", tmp_path)
+    assert any("structure_strength" in row for row in rows), (
+        "fixture must actually contain the raw leak column for this test to be meaningful"
+    )
+
+    discover_latent_from_run(
+        "hsp_latent_leak", tmp_path, target_column="metric.structure_strength", checkpoint=True
+    )
+    _, meta = load_latent_checkpoint(tmp_path, "hsp_latent_leak", "pca")
+    assert "structure_strength" not in meta["feature_columns"]

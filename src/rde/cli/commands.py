@@ -589,7 +589,8 @@ def cmd_rank_metrics(args: argparse.Namespace) -> int:
     ui.rule("rank metric generators")
     ui.kv("target", target)
     ui.kv("n_rows", len(rows))
-    var_names = metric_variable_columns(rows, target, max_vars=args.max_vars)
+    domain_id = Store(args.store_root).read_manifest(args.run_id).domain_id
+    var_names = metric_variable_columns(rows, target, max_vars=args.max_vars, domain_id=domain_id)
     backend = normalize_expr_backend(args.expr_backend or args.backend)
     ui.kv("backend", backend)
     ui.kv("variables", len(var_names))
@@ -651,6 +652,7 @@ def cmd_rank_desc(args: argparse.Namespace) -> int:
                 eval_backend=backend,  # type: ignore[arg-type]
                 include_templates=args.mode in {"templates", "both"},
                 include_derived=args.mode in {"derived", "both"},
+                domain_id=Store(args.store_root).read_manifest(args.run_id).domain_id,
             )
         )
     table_rows = [
@@ -1477,6 +1479,147 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _repr_demo_batch(pattern: str, n: int, samples: int, seed: int):
+    """Generic (domain-agnostic) demo batches for `repr-rank --input` omitted.
+
+    Never imports `rde_domains` — core CLI must not depend on domain
+    plugins. Real domain data (hsp_functions/tsp) is reachable through
+    `rde_domains.hsp_functions.representations` /
+    `rde_domains.tsp.representations`'s own Python API, not through this
+    command; those modules have no CLI of their own to attach to (they are
+    plugin libraries, not entry points), and forcing a domain import into
+    `rde/cli/` would violate the same core/domain boundary
+    `tests/rde/integration/test_no_rde_domains_import.py` enforces.
+    """
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    if pattern == "random":
+        return rng.normal(size=(samples, n))
+    if pattern == "periodic":
+        t = np.linspace(0, 2 * math.pi, n, endpoint=False)
+        return np.stack([np.sin(3 * t + phase) for phase in rng.normal(size=samples)])
+    if pattern == "polynomial":
+        nodes = np.arange(n, dtype=float)
+        slopes = rng.normal(size=samples)
+        intercepts = rng.normal(size=samples)
+        return intercepts[:, None] + slopes[:, None] * nodes[None, :]
+    raise ValueError(f"unknown --pattern: {pattern!r}")
+
+
+def cmd_repr_rank(args: argparse.Namespace) -> int:
+    ui = _console(args)
+    plain = _is_plain(args)
+    import numpy as np
+
+    from rde.representation import rank_representations, write_search_report
+
+    if args.input:
+        batch = np.load(args.input)
+        n = batch.shape[1]
+    else:
+        n = args.n
+        batch = _repr_demo_batch(args.pattern, n, args.samples, args.seed)
+
+    ranked = rank_representations(batch, n=n, tolerance=args.tolerance)
+
+    if not plain:
+        ui.banner(subtitle="representation search")
+    ui.kv("n", n)
+    ui.kv("samples", batch.shape[0])
+    rows = [
+        [
+            c.representation_id,
+            f"{c.complexity:.4g}",
+            f"{c.conversion_cost:.4g}",
+            c.certificate.status,
+            f"{c.certificate.error:.3e}",
+        ]
+        for c in ranked
+    ]
+    ui.table(
+        "representation ranking",
+        ["representation_id", "complexity", "conversion_cost", "status", "roundtrip_error"],
+        rows,
+    )
+
+    if args.output:
+        out = write_search_report(ranked, args.output)
+        ui.kv("report", out)
+    return 0
+
+
+def cmd_repr_rank_run(args: argparse.Namespace) -> int:
+    """Rank the grammar against one already-materialized array field from a real run.
+
+    Purely additive: reads `instance_features.jsonl` + `arrays/` that
+    `run`/`campaign` already wrote via `Store`, does not touch or modify
+    them, and does not change what `run`/`campaign`/`discover` themselves
+    do. `--array-key` names an array-valued `primitive_features()` key
+    (e.g. hsp_functions' `diff_profile`, tsp's `D`) — this command never
+    imports `rde_domains` (same core/domain boundary as `repr-rank`'s demo
+    batches); the caller supplies the key as a plain string, so it works
+    for any domain without this command knowing what the key means.
+    """
+    ui = _console(args)
+    plain = _is_plain(args)
+    import numpy as np
+
+    from rde.io.store import Store
+    from rde.representation import rank_representations, write_search_report_to_store
+
+    store = Store(args.store_root)
+    rows = store.read_instance_features(args.run_id)
+    if not rows:
+        ui.warn(f"no instance_features found for run_id={args.run_id!r}")
+        return 1
+
+    by_size: dict[int, list[np.ndarray]] = {}
+    for row in rows:
+        array_refs = row.get("array_refs") or {}
+        if args.array_key not in array_refs:
+            continue
+        array = store.load_array(args.run_id, row["instance_id"], f"primitive_{args.array_key}")
+        by_size.setdefault(int(row["size"]), []).append(np.asarray(array, dtype=float))
+
+    if not by_size:
+        ui.warn(
+            f"no instance_features rows had array_key={args.array_key!r} saved "
+            f"(checked {len(rows)} rows)"
+        )
+        return 1
+
+    if not plain:
+        ui.banner(subtitle="representation search over a stored run")
+    ui.kv("run_id", args.run_id)
+    ui.kv("array_key", args.array_key)
+
+    any_written = False
+    for size in sorted(by_size):
+        arrays = by_size[size]
+        lengths = {a.shape[-1] for a in arrays}
+        if len(lengths) != 1:
+            ui.warn(f"size={size}: inconsistent array lengths {sorted(lengths)}; skipping")
+            continue
+        n = lengths.pop()
+        batch = np.stack(arrays, axis=0)
+        ranked = rank_representations(batch, n=n, tolerance=args.tolerance)
+        table_rows = [[c.representation_id, f"{c.complexity:.4g}", c.certificate.status] for c in ranked]
+        ui.table(
+            f"size={size} (n={n}, samples={batch.shape[0]})",
+            ["representation_id", "complexity", "status"],
+            table_rows,
+        )
+        write_search_report_to_store(ranked, store, args.run_id)
+        any_written = True
+
+    store.flush(args.run_id)
+    if any_written:
+        ui.kv("representation_reports", store.run_dir(args.run_id) / "representation_reports.jsonl")
+        return 0
+    return 1
+
+
 def _add_store_root(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--store-root", default="rde_runs", help="Store root directory")
 
@@ -1958,6 +2101,40 @@ def build_parser() -> argparse.ArgumentParser:
     machine_p.add_argument("--json", action="store_true", help="Emit JSON for agents/scripts")
     machine_p.add_argument("--plain", action="store_true")
     machine_p.set_defaults(func=cmd_machine_profile)
+
+    repr_rank_p = sub.add_parser(
+        "repr-rank",
+        help="Rank rde.representation's grammar against a batch (Representation Core, not campaign features)",
+    )
+    repr_rank_p.add_argument("--n", type=int, default=8, help="Vector length (ignored with --input)")
+    repr_rank_p.add_argument("--samples", type=int, default=8, help="Batch size (ignored with --input)")
+    repr_rank_p.add_argument(
+        "--pattern",
+        choices=("random", "periodic", "polynomial"),
+        default="random",
+        help="Demo batch generator (ignored with --input)",
+    )
+    repr_rank_p.add_argument("--seed", type=int, default=0)
+    repr_rank_p.add_argument(
+        "--input", default=None, help="Path to an .npy file holding a (samples, n) batch instead of a demo pattern"
+    )
+    repr_rank_p.add_argument("--tolerance", type=float, default=1e-6)
+    repr_rank_p.add_argument("--output", default=None, help="Write a JSON search report to this path")
+    repr_rank_p.set_defaults(func=cmd_repr_rank)
+
+    repr_rank_run_p = sub.add_parser(
+        "repr-rank-run",
+        help="Rank rde.representation's grammar against an array field already stored by run/campaign",
+    )
+    _add_store_root(repr_rank_run_p)
+    repr_rank_run_p.add_argument("--run-id", required=True)
+    repr_rank_run_p.add_argument(
+        "--array-key",
+        required=True,
+        help="Array-valued primitive_features() key to load (e.g. hsp_functions' diff_profile, tsp's D)",
+    )
+    repr_rank_run_p.add_argument("--tolerance", type=float, default=1e-6)
+    repr_rank_run_p.set_defaults(func=cmd_repr_rank_run)
 
     return parser
 

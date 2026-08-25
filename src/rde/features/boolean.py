@@ -1,4 +1,4 @@
-"""Boolean/finite-domain hidden-structure descriptors (Direction F).
+"""Boolean/finite-domain hidden-structure descriptors.
 
 Two tiers, matching this project's POLYNOMIAL_INPUT / ENUMERATED_ORACLE
 split (see `rde.core.feature_contract`):
@@ -16,9 +16,10 @@ split (see `rde.core.feature_contract`):
   ``hsp_oracle.*``.
 
 Both tiers reuse `rde.features.fourier.walsh_hadamard` as the underlying
-fast transform rather than reimplementing it. See
-`docs/research/hidden-subgroup-function-discovery-charter.md` S4.1 for why
-the bounded-query / full-table split is not optional here.
+fast transform rather than reimplementing it. The bounded-query / full-table
+split is not optional: it is the precondition every known exponential
+HSP-style separation depends on, and predictor-eligible descriptors must
+never leak the full-table tier.
 """
 
 from __future__ import annotations

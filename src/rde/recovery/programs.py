@@ -139,7 +139,7 @@ def _gf2_basis_ints(mat: np.ndarray) -> list[int]:
 
 
 def enumerate_recovery_programs() -> tuple[object, ...]:
-    """Finite catalog searched by EXP-067. Poly(n) per program; no 2^n loops."""
+    """Finite catalog of recovery programs. Poly(n) per program; no 2^n loops."""
     programs: list[object] = []
     for bag in BAGS:
         for reducer in REDUCERS:

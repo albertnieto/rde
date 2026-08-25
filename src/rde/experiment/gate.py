@@ -64,6 +64,7 @@ STRUCTURAL_PREFIXES: tuple[str, ...] = (
     "hsp_sample.",
     "spectral.",
     "fourier.",
+    "repr.",
 )
 
 # Phases that constitute "the discovery loop actually ran". An experiment may

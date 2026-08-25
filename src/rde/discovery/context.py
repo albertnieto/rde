@@ -12,6 +12,7 @@ import numpy as np
 
 from rde.analyze.feature_table import FeatureTable
 from rde.analyze.query import flatten_features, numeric_columns
+from rde.analyze.tables import contract_excluded_columns
 from rde.discovery.datasets import (
     FeatureDataset,
     RepresentationBatch,
@@ -36,7 +37,21 @@ class DiscoveryContext:
     _representation_batch: RepresentationBatch | None = field(default=None, repr=False)
     _feature_dataset: FeatureDataset | None = field(default=None, repr=False)
     _env_cache: dict[tuple[str, ...], dict[str, np.ndarray]] = field(default_factory=dict, repr=False)
+    _domain_id_loaded: bool = field(default=False, repr=False)
+    _domain_id: str | None = field(default=None, repr=False)
     timings: dict[str, float] = field(default_factory=dict)
+
+    def domain_id(self) -> str | None:
+        """Best-effort manifest lookup, cached; `None` if unreadable (fail-open)."""
+        if not self._domain_id_loaded:
+            from rde.io.store import Store
+
+            try:
+                self._domain_id = Store(self.store_root).read_manifest(self.run_id).domain_id
+            except (FileNotFoundError, OSError, ValueError, KeyError):
+                self._domain_id = None
+            self._domain_id_loaded = True
+        return self._domain_id
 
     @classmethod
     def load(
@@ -72,8 +87,11 @@ class DiscoveryContext:
     ) -> FeatureDataset:
         if self._feature_dataset is None:
             X, cols = self.feature_matrix()
+            excluded = contract_excluded_columns(self.rows, self.domain_id())
             use_cols = feature_columns or [
-                c for c in cols if c != self.target and not any(c.startswith(p) for p in exclude_prefixes)
+                c
+                for c in cols
+                if c != self.target and c not in excluded and not any(c.startswith(p) for p in exclude_prefixes)
             ]
             idx = [cols.index(c) for c in use_cols if c in cols]
             target_arr = self.feature_table().column(self.target)

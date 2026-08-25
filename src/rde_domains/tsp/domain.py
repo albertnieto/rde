@@ -1,20 +1,20 @@
-"""`SynthesisDomain` over Euclidean TSP instances (Mode 2, Direction E).
+"""`SynthesisDomain` over Euclidean TSP instances (Mode 2).
 
-Charter: `docs/research/tsp-novel-representation-discovery-charter.md`. Per
-that charter's Sec 1/Sec 5 step 2, decomposition moves must be *derived* from
-the raw distance-matrix data itself, never handed in as a prior -- this
-module never reads or is told the "correct" tour; the only structural signal
-it uses is `components.mst_gap_groups`, which looks solely at the instance's
-own distance matrix.
+Decomposition moves must be *derived* from the raw distance-matrix data
+itself, never handed in as a prior -- this module never reads or is told
+the "correct" tour; the only structural signal it uses is
+`components.mst_gap_groups`, which looks solely at the instance's own
+distance matrix.
 
-**Why this is a harder exactness problem than `qubo_synthesis`.** A
-block-diagonal QUBO's components are *provably* non-interacting -- zero
-off-diagonal coupling means the cost is exactly additive across components,
-so independently-optimal sub-solutions combine into the exact global optimum
-by construction. TSP has no such free lunch: a single Hamiltonian cycle must
-connect every city, so even maximally-separated spatial clusters interact
-through the (small number of) edges that cross between them. There is no
-"truly independent sub-problem" analogue here.
+**Why this is a harder exactness problem than block-separable optimization.**
+A block-diagonal cost function's components are *provably* non-interacting
+-- zero off-diagonal coupling means the cost is exactly additive across
+components, so independently-optimal sub-solutions combine into the exact
+global optimum by construction (see `rde.testing.block_separable`). TSP has
+no such free lunch: a single Hamiltonian cycle must connect every city, so
+even maximally-separated spatial clusters interact through the (small
+number of) edges that cross between them. There is no "truly independent
+sub-problem" analogue here.
 
 **What `combine` actually does about that.** For exactly two well-separated
 clusters (this version only supports the pairwise case -- see
@@ -31,10 +31,9 @@ for each leaf, only the *city membership* of each cluster.
 That joint search is exact **conditional on** the "exactly two crossings"
 structural assumption holding for the specific generated instance. Whether it
 actually holds -- and how the match rate depends on the generation gap ratio
--- is not asserted here; it is exactly the empirical question the Direction E
-campaign (`src/rde/docs/experiment-playbook.md` recipe) exists to
-answer against `brute_force`, the same way `qubo_dense_control`'s "nothing is
-accepted" is part of that domain's result rather than a bug to fix.
+-- is not asserted here; it is exactly the empirical question a campaign
+against `brute_force` answers, the same way `tsp_uniform_control`'s "nothing
+is accepted" is part of that domain's result rather than a bug to fix.
 """
 
 from __future__ import annotations
@@ -158,9 +157,9 @@ class TspSynthesisDomain:
         without it, cluster A always occupies indices `[0, size_a)` and
         cluster B `[size_a, size)`, so a decomposition that blindly cuts the
         city list in half by index would accidentally coincide with the real
-        clusters and "pass" without doing any real detection -- the same
-        contiguous-block trap `qubo_synthesis._planted_instance` scatters
-        against. Detection here (`mst_gap_groups`) never reads index order in
+        clusters and "pass" without doing any real detection -- exactly the
+        contiguous-block trap this scattering guards against.
+        Detection here (`mst_gap_groups`) never reads index order in
         the first place, so this permutation cannot help it -- it only
         removes an accidental shortcut a *different*, wrong decomposition
         could otherwise exploit by luck.
@@ -254,9 +253,8 @@ class TspSynthesisDomain:
         """Exact optimum by full permutation enumeration -- reference oracle.
 
         Deliberately ignores any cluster structure the instance happens to
-        have (same discipline as `qubo_synthesis`'s `brute_force`): it is
-        independent ground truth for `verify_skeleton`, not a faster version
-        of the thing being verified.
+        have: it is independent ground truth for `verify_skeleton`, not a
+        faster version of the thing being verified.
         """
         d, variables = _instance_view(instance)
         n = d.shape[0]
@@ -286,8 +284,7 @@ class TspSynthesisDomain:
         for why k > 2 is future work, not implemented here). Returns `None`
         -- "this skeleton does not apply here" -- when `mst_gap_groups`
         does not find exactly two groups (no real gap, or more than two
-        gaps) or when either group exceeds `max_leaf_width`, exactly
-        mirroring `qubo_synthesis.decompose_flat`'s width guard.
+        gaps) or when either group exceeds `max_leaf_width`.
         """
         if branches != 2:
             return None

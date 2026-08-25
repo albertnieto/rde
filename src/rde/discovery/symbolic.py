@@ -14,6 +14,7 @@ from typing import Any, Callable
 import numpy as np
 
 from rde.analyze.query import correlate_with_target, numeric_columns
+from rde.analyze.tables import contract_excluded_columns
 from rde.analyze.ranker import extrapolation_r_squared
 from rde.expression.evaluate import regression_r_squared
 from rde.features.numeric import safe_pearson_r
@@ -728,18 +729,21 @@ def discover_equation(
     require_gpu: bool = False,
     on_stage: Callable[[str], None] | None = None,
     on_progress: ProgressCallback | None = None,
+    domain_id: str | None = None,
 ) -> SymbolicResult:
     def _step(name: str) -> None:
         if on_stage is not None:
             on_stage(name)
 
+    excluded_by_contract = contract_excluded_columns(rows, domain_id)
     if features is not None:
-        feat_list = [f for f in features if f != target]
+        feat_list = [f for f in features if f != target and f not in excluded_by_contract]
     else:
-        hits = correlate_with_target(rows, target, min_abs_r=0.1)
+        skip = {target} | excluded_by_contract
+        hits = correlate_with_target(rows, target, min_abs_r=0.1, exclude=skip)
         feat_list = [h["column"] for h in hits[:top_features]]
         if not feat_list:
-            feat_list = numeric_columns(rows, exclude={target})[:top_features]
+            feat_list = numeric_columns(rows, exclude=skip)[:top_features]
 
     backends = symbolic_backends()
     skipped_engines: list[dict[str, str]] = []
@@ -1166,14 +1170,16 @@ def run_symbolic_discovery(
     require_gpu: bool = False,
     on_stage: Callable[[str], None] | None = None,
     on_progress: ProgressCallback | None = None,
+    domain_id: str | None = None,
 ) -> SymbolicDiscoveryResult:
     """Phase 5: fit target directly and interpret promising Phase-4 latents."""
     backends = symbolic_backends()
 
+    excluded_by_contract = contract_excluded_columns(rows, domain_id)
     candidate_features = (
-        list(feature_columns)
+        [f for f in feature_columns if f not in excluded_by_contract]
         if feature_columns is not None
-        else numeric_columns(rows, exclude={target})
+        else numeric_columns(rows, exclude={target} | excluded_by_contract)
     )
     feats, dropped_features, finite_feature_counts, joint_finite_rows = _select_symbolic_features(
         rows,
@@ -1204,6 +1210,7 @@ def run_symbolic_discovery(
         require_gpu=require_gpu,
         on_stage=on_stage,
         on_progress=on_progress,
+        domain_id=domain_id,
     )
     target_fit.metadata["dropped_feature_columns"] = dropped_features
     target_fit.metadata["feature_finite_counts"] = {

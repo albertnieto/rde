@@ -542,11 +542,22 @@ def build_feature_dataset(
     rows: list[dict[str, Any]] | None = None,
     X: np.ndarray | None = None,
     cols: list[str] | None = None,
+    domain_id: str | None = None,
 ) -> FeatureDataset:
+    from rde.analyze.tables import contract_excluded_columns
+
     if rows is None or X is None or cols is None:
         X, cols, rows = load_feature_matrix(run_id, store_root, target=target)
+    if domain_id is None:
+        try:
+            domain_id = Store(store_root).read_manifest(run_id).domain_id
+        except (FileNotFoundError, OSError, ValueError, KeyError):
+            domain_id = None
+    excluded = contract_excluded_columns(rows, domain_id)
     use_cols = feature_columns or [
-        c for c in cols if c != target and not any(c.startswith(p) for p in exclude_prefixes)
+        c
+        for c in cols
+        if c != target and c not in excluded and not any(c.startswith(p) for p in exclude_prefixes)
     ]
     idx = [cols.index(c) for c in use_cols if c in cols]
     target_arr = np.array([row.get(target, float("nan")) for row in rows], dtype=float)

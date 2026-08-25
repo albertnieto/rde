@@ -160,9 +160,16 @@ def run_phase4(
     if context is not None:
         resolved_target = context.target
         rows = context.rows
+        domain_id = context.domain_id()
     else:
         resolved_target = resolve_target_for_run(run_id, store_root, override=target)
         rows = load_rows_from_source(run_id=run_id, store_root=store_root)
+        from rde.io.store import Store
+
+        try:
+            domain_id = Store(store_root).read_manifest(run_id).domain_id
+        except (FileNotFoundError, OSError, ValueError, KeyError):
+            domain_id = None
     report = Phase4Report(
         run_id=run_id,
         target=resolved_target,
@@ -172,10 +179,14 @@ def run_phase4(
     if not rows:
         return report
 
+    from rde.analyze.tables import contract_excluded_columns
+
+    excluded = contract_excluded_columns(rows, domain_id)
     feat_cols = [
         c
         for c in sorted({k for row in rows for k in row if isinstance(row.get(k), (int, float))})
         if c not in {resolved_target, "size", "seed", "run_id", "instance_id", "family_index"}
+        and c not in excluded
         and not str(c).startswith("metric.")
     ][:32]
 
@@ -186,6 +197,7 @@ def run_phase4(
             c
             for c in context_cols
             if c != resolved_target
+            and c not in excluded
             and not str(c).startswith(("metric.", "run_id"))
         ]
         pca_idx = [context_cols.index(c) for c in pca_cols]
@@ -223,6 +235,7 @@ def run_phase4(
             store_root,
             target_column=resolved_target,
             n_components=n_pca_components,
+            domain_id=domain_id,
             checkpoint=checkpoint,
         )
     if report.pca is not None and report.pca.latent_codes.size:

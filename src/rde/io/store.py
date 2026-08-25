@@ -541,6 +541,26 @@ class Store:
             if sum(len(rows) for rows in pending.values()) >= self._jsonl_batch_size:
                 self._checkpoint_completion_index(run_id)
 
+    def append_representation_report(self, run_id: str, row: dict[str, Any]) -> None:
+        """Append one `rde.representation` search/audit result row for `run_id`.
+
+        A separate `representation_reports.jsonl` file, not
+        `features.jsonl`/`instance_features.jsonl` — representation-search
+        results (`rde.representation.report.search_report_payload` et al.)
+        are not per-instance descriptor/metric rows keyed by
+        `(instance_id, family_index)`, so they don't participate in this
+        store's resumable-campaign completion index the way `append_features`/
+        `append_instance_features` do; this is a plain append, no schema
+        validation (there is no `rde.core.schema` shape for this row kind).
+        """
+        self._writer(run_id, "representation_reports.jsonl").append(row)
+
+    def iter_representation_reports(self, run_id: str) -> Iterator[dict[str, Any]]:
+        yield from iter_jsonl(self.run_dir(run_id) / "representation_reports.jsonl")
+
+    def read_representation_reports(self, run_id: str) -> list[dict[str, Any]]:
+        return list(iter_jsonl(self.run_dir(run_id) / "representation_reports.jsonl"))
+
     def read_instance_features(
         self, run_id: str, *, validate: bool = False
     ) -> list[dict[str, Any]]:

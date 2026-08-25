@@ -1,4 +1,4 @@
-"""RDE domain: hidden-subgroup-style oracle-function family discovery (Direction F).
+"""RDE domain: hidden-subgroup-style oracle-function family discovery.
 
 World layer: `functions.make_instance` generates one analytic,
 query-evaluable oracle function per instance. The default roster is the
@@ -7,23 +7,21 @@ permanently (Simon, cyclic/Shor-style period-finding, Kuperberg dihedral
 coset), and three discovery-target families with a tunable, planted degree
 of coset structure (`structure_break_abelian`, `abelian_dihedral_blend`,
 `generic_random_control`). Callers may pass `families=` (or mutate
-`.families` on a registered domain) for a different roster; EXP-066 uses
-the Phase-3 non-abelian pairing families. Do not change the default: EXP-064
-and EXP-065 regenerate against `ALL_FAMILIES`.
+`.families` on a registered domain) for a different roster; `functions.py`'s
+`PHASE3_POPULATION` is one such alternative roster (non-abelian pairing
+families).
 
 Observe layer: every predictor-eligible column comes from
 `sampling.bounded_query_descriptors`, itself built from a poly(n_bits)
-random-query sample -- never from the full 2**n_bits table. See
-`docs/research/hidden-subgroup-function-discovery-charter.md` S4.1 for why
-that is the one non-negotiable part of this domain's contract (it is the
-precondition every known exponential HSP-style separation depends on, and
-the precise thing whose absence closed Direction E's TSP pivot).
+random-query sample -- never from the full 2**n_bits table. That bounded-query
+access model is the one non-negotiable part of this domain's contract: it is
+the precondition every known exponential HSP-style separation depends on.
 
 Mode 1 campaigns on this domain used `structure_strength` / collision
-rate / `algorithm_class` as Pearson targets (EXP-064–066). That cannot
-emit an algorithm. Mode 2 recovery of planted K from a query tape is
-`HspFunctionRecovery` (ALGO-063). `complexity.py` remains an interpretive
-reference, not a per-row Delta target.
+rate / `algorithm_class` as Pearson targets. That cannot emit an algorithm.
+Mode 2 recovery of planted K from a query tape is `HspFunctionRecovery`
+(ALGO-063). `complexity.py` remains an interpretive reference, not a
+per-row Delta target.
 """
 
 from __future__ import annotations
@@ -34,6 +32,7 @@ import numpy as np
 
 from rde.core.instance import InstanceRecord
 from rde.core.protocols import SimpleFamilySlice
+from rde.representation import rank_representations
 from rde_domains.hsp_functions import sampling
 from rde_domains.hsp_functions.functions import (
     ALL_FAMILIES,
@@ -216,6 +215,19 @@ class HspFunctionDomain:
             #: into the row regardless of instance.params flattening.
             "structure_strength": fi.structure_strength,
         }
+        #: `rde.representation`'s best-achievable roundtrip complexity for
+        #: this instance's own diff_profile -- a real predictor candidate,
+        #: not a demonstration: computed purely from `diff_profile` (never
+        #: touches `structure_strength`), so it is leak-free by the same
+        #: argument as `diff_profile` itself. `rank_representations` ranks
+        #: the fixed 7-primitive grammar every call; this is a handful of
+        #: O(n_bits^2)-or-cheaper linear-algebra ops per instance, not a
+        #: search -- negligible next to `sample_difference_estimates`'s own
+        #: O(n_bits^2) query cost.
+        ranked = rank_representations(out["diff_profile"][None, :], n=fi.n_bits)
+        verified_complexities = [c.complexity for c in ranked if c.certificate.status == "verified"]
+        if verified_complexities:
+            out["repr.best_complexity"] = float(min(verified_complexities))
         from rde_domains.hsp_functions.kind_screen import algorithm_class_for_generator
 
         klass = algorithm_class_for_generator(str(instance.params.get("generator") or fi.family))
@@ -228,10 +240,9 @@ class HspFunctionDomain:
         # diff_profile above) under a `rde.experiment.gate`-recognized
         # STRUCTURAL_PREFIXES key ("landscape."), since a custom prefix
         # alone (`hsp_sample.*`) is not recognized by that hardcoded
-        # whitelist and left the population-distinctness gate unable to
-        # see this domain's real signal at all -- confirmed empirically
-        # via EXP-064's Gate-0 run. Same underlying bounded-query data as
-        # `hsp_sample.f.*`, not a second measurement.
+        # whitelist and leaves the population-distinctness gate unable to
+        # see this domain's real signal at all. Same underlying bounded-query
+        # data as `hsp_sample.f.*`, not a second measurement.
         for key in ("collision_rate", "n_collisions_found", "difference_span_dim_fraction", "detected_period_divisor_fraction"):
             full_key = f"hsp_sample.f.{key}"
             if full_key in sample_desc:

@@ -1,6 +1,6 @@
 """Regression tests for the target-degeneracy guard (2026-08-19).
 
-Direction E, TSP cost-landscape campaign: a `degree2_entropy` target was
+A TSP cost-landscape campaign found that a `degree2_entropy` target was
 mathematically guaranteed constant by the cost function's own algebra
 (std ~1.25e-15 across 1200 instances, differing only in floating-point
 noise), yet the discovery pipeline reported `outcome_grade_hint=5` --

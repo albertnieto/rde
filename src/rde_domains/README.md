@@ -36,11 +36,6 @@ pip install rde
 pip install -e .
 ```
 
-## Research charters
-
-- [`docs/research/hidden-subgroup-function-discovery-charter.md`](../../docs/research/hidden-subgroup-function-discovery-charter.md)
-- [`docs/research/tsp-novel-representation-discovery-charter.md`](../../docs/research/tsp-novel-representation-discovery-charter.md)
-
 ## Test boundary
 
 - `tests/rde/` — core suite; must not import `rde_domains`.

@@ -166,7 +166,7 @@ def test_finalize_requires_declaring_the_decisive_criteria(tmp_path: Path):
 
 
 def test_finalize_rejects_a_verdict_resting_on_a_nan(tmp_path: Path):
-    """The EXP-050/051/052 failure mode: a NaN criterion read as 'no effect'."""
+    """A real failure mode: a NaN criterion read as 'no effect'."""
     gate = _ready_gate(tmp_path)
     with pytest.raises(ExperimentPreflightError, match="did not evaluate"):
         gate.finalize(
@@ -265,6 +265,17 @@ def test_structural_helpers():
     assert distinct_structural_instances(rows, cols) == 5
     same = _rows(sizes=(6,), n_per_size=5, distinct=False)
     assert distinct_structural_instances(same, cols) == 1
+
+
+def test_structural_columns_recognizes_repr_prefix():
+    """`repr.best_complexity` (rde.representation's best-verified complexity) is a real
+    input-derived predictor, same class as `landscape.*`/`hsp_sample.*` -- must be visible to
+    the population-distinctness/mechanism-visibility checks, not silently dropped for lacking a
+    whitelisted prefix (the exact failure mode `hsp_functions/domain.py` already documents for
+    `hsp_sample.*` needing re-exposure under `landscape.*`).
+    """
+    rows = [{"repr.best_complexity": float(i), "metric.structure_strength": float(i)} for i in range(3)]
+    assert structural_columns(rows) == ["repr.best_complexity"]
 
 
 def test_finalize_accepts_deprecated_level_alias(tmp_path: Path):

@@ -1,7 +1,7 @@
-"""Real tour-cost-distribution statistics domain (EXP-063, Direction E).
+"""Real tour-cost-distribution statistics domain.
 
-Third attempt at a mechanism-agnostic TSP target this session, after two
-failure modes diagnosed and closed:
+A mechanism-agnostic TSP target, chosen after two failure modes that are
+worth documenting since they are easy to reintroduce by accident:
 
 1. `walsh_top_k_energy` (a quadratic-QUBO-penalty cost function's Walsh
    spectrum): provably degree<=2 by the cost function's own algebra --
@@ -23,16 +23,10 @@ brute-force enumeration, same cap discipline as `TspSynthesisDomain`).
 Every statistic below is computed only from genuine, D-dependent tour
 costs -- there is no fixed skeleton left to dominate.
 
-Motivated by an existing, already-established capability of this project
-(not a new speculative connection): overview.md Section 9's QPFA
-"cost-landscape thermometer" already shows the ancilla-based moment
-p_bar_R = (1/2^N) sum_x cos^(2R)(phi(x)/2) estimates exactly this family of
-quantities (|X*_eps|, C_min via binary search, spectral gap) in polynomial
-time, a task that is #P-hard classically. The question this domain's
-population + RDE's descriptor/expression search is built to answer:
-which structural descriptors of the raw distance matrix D predict these
-landscape statistics -- i.e. can a cheap classical proxy characterize, in
-advance, what the (expensive, #P-hard-classically) exact quantity would be.
+The question this domain's population + RDE's descriptor/expression search
+is built to answer: which structural descriptors of the raw distance
+matrix D predict these landscape statistics -- i.e. can a cheap classical
+proxy characterize, in advance, what an expensive exact quantity would be.
 """
 
 from __future__ import annotations
@@ -44,7 +38,9 @@ import numpy as np
 from rde.core.instance import InstanceRecord
 from rde.core.limits import validate_bruteforce_size
 from rde.core.protocols import SimpleFamilySlice
+from rde.representation import rank_representations
 from rde_domains.tsp.components import all_tour_costs, distance_matrix, random_euclidean_points
+from rde_domains.tsp.representations import upper_triangular_distances
 
 #: Same cap as TspSynthesisDomain, same reason: (N-1)! grows faster than any
 #: fixed exponential base. N=9 -> 8! = 40320 tours per instance, still fast
@@ -201,11 +197,22 @@ class TspLandscapeStatsDomain:
         # family, already excluded in the domain contract) can read it.
         c = cache if cache is not None else self.prepare_instance(instance)
         d, costs = c["D"], c["costs"]
-        return {
+        out: dict[str, float | np.ndarray] = {
             "n_cities": float(d.shape[0]),
             "D": d,
             "costs": costs,
         }
+        #: `rde.representation`'s best-achievable roundtrip complexity for this
+        #: instance's own upper-triangular distance profile -- computed purely
+        #: from D (never touches tour costs or the metric.* targets derived
+        #: from them), so it is leak-free by the same argument as `matrix.D.*`
+        #: itself. Same pattern as hsp_functions/domain.py's `repr.best_complexity`.
+        profile = upper_triangular_distances(d)
+        ranked = rank_representations(profile[None, :], n=profile.shape[0])
+        verified_complexities = [cand.complexity for cand in ranked if cand.certificate.status == "verified"]
+        if verified_complexities:
+            out["repr.best_complexity"] = float(min(verified_complexities))
+        return out
 
 
 def landscape_stats_domain(**kwargs) -> TspLandscapeStatsDomain:

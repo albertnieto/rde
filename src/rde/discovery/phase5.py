@@ -102,6 +102,12 @@ def run_phase5(
     resolved_target = resolve_target_for_run(run_id, store_root, override=target)
     if rows is None:
         rows = load_rows_from_source(run_id=run_id, store_root=store_root)
+    try:
+        from rde.io.store import Store
+
+        domain_id = Store(store_root).read_manifest(run_id).domain_id
+    except (FileNotFoundError, OSError, ValueError, KeyError):
+        domain_id = None
     report = Phase5Report(run_id=run_id, target=resolved_target, n_rows=len(rows))
     report.backends = symbolic_backends()
     if not rows:
@@ -132,6 +138,7 @@ def run_phase5(
         require_gpu=require_gpu,
         on_stage=on_symbolic_stage,
         on_progress=on_progress,
+        domain_id=domain_id,
     )
     report.symbolic = _symbolic_payload(sym_phase)
     report.latent_interpretations = sym_phase.latent_interpretations

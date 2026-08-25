@@ -1,11 +1,10 @@
 """Backward-synthesis (Mode 2) domain over Euclidean TSP instances.
 
-Direction E (`docs/roadmap.md`, `docs/research/tsp-novel-representation-discovery-charter.md`).
-Treatment/control pair mirroring `rde_domains.qubo_synthesis`'s pattern:
-`tsp_clustered` (planted, well-separated spatial clusters) and
-`tsp_uniform_control` (no planted structure). See `domain.py` for why exact
-TSP decomposition is a harder problem than QUBO block-separability, and why
-the control's expected "nothing accepted" outcome is part of the result.
+Treatment/control pair: `tsp_clustered` (planted, well-separated spatial
+clusters) and `tsp_uniform_control` (no planted structure). See `domain.py`
+for why exact TSP decomposition is a harder problem than block-separable
+optimization, and why the control's expected "nothing accepted" outcome is
+part of the result.
 """
 
 from rde_domains.tsp.circulant import (

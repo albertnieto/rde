@@ -4,7 +4,7 @@ Public surface for reverse-engineering an algorithm skeleton from a declared
 resource budget, as opposed to forward discovery which fits representations
 to already-generated data. See `rde.synthesis.search` for the two-stage
 (symbolic prune, then domain-verified) search loop and
-`docs/algorithms/README.md` (ALGO-057) for the project card.
+`src/rde/docs/hierarchical-synthesis.md` for the design note.
 """
 
 from rde.synthesis.recurrence import CostClass, Recurrence, meets_target, solve_recurrence

@@ -54,11 +54,6 @@ In-package docs (authoritative for science and engineering contracts):
 - [`src/rde/docs/ARCHITECTURE.md`](src/rde/docs/ARCHITECTURE.md) — pipeline
 - [`src/rde/docs/experiment-playbook.md`](src/rde/docs/experiment-playbook.md)
 
-Domain research charters:
-
-- [`docs/research/hidden-subgroup-function-discovery-charter.md`](docs/research/hidden-subgroup-function-discovery-charter.md)
-- [`docs/research/tsp-novel-representation-discovery-charter.md`](docs/research/tsp-novel-representation-discovery-charter.md)
-
 Agent workflow:
 
 - [`AGENTS.md`](AGENTS.md) — repository agent guide

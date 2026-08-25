@@ -100,6 +100,22 @@ class FeatureCatalog:
     def predictor_columns(self, keys: list[str]) -> list[str]:
         return [k for k in keys if self.is_predictor_eligible(k)]
 
+    def is_explicitly_excluded(self, key: str) -> bool:
+        """True iff a matching spec exists and marks `key` `predictor_eligible=False`.
+
+        Fail-*open* (unlike `is_predictor_eligible`, which fails closed for
+        an unmatched key): candidate-selection call sites (`metric_variable_
+        columns`, `descriptor_variable_columns`) use this so that a column
+        this domain's contract hasn't gotten around to cataloging yet stays
+        available, while a column the contract explicitly names as
+        non-predictor-eligible (e.g. a raw `OUTCOME` scalar like this
+        domain's ground-truth `structure_strength`) is always blocked. Audit
+        code that needs the conservative fail-closed behavior should keep
+        using `is_predictor_eligible` / `predictor_columns`.
+        """
+        spec = self.lookup(key)
+        return spec is not None and not spec.predictor_eligible
+
     def to_canonical_dict(self) -> dict[str, Any]:
         return {
             "contract_version": self.contract_version,

@@ -1,4 +1,4 @@
-"""Edge-indicator TSP cost-landscape domain (Direction E, broad campaign).
+"""Edge-indicator TSP cost-landscape domain.
 
 Unlike `circulant.py` (which presupposes the mechanism -- abelian/circulant
 symmetry -- and only characterizes detectability of that one hypothesis),
@@ -14,8 +14,7 @@ varying symmetry-breaking, uniform control) rather than one hand-picked
 hypothesis.
 
 Cost function: standard edge-indicator TSP-QUBO reduction (not itself
-claimed novel -- see the "standard permutation-QUBO" / "edge-indexed"
-categories in the Direction E literature saturation pass, CLAIM-176-187).
+claimed novel -- a standard permutation-QUBO / edge-indexed encoding).
 `cost(x) = sum of selected-edge weights + penalty * sum_v (degree(v)-2)^2`
 for x in {0,1}^(N(N-1)/2). What's actually being searched here -- whether
 this landscape has exploitable Walsh-sparse structure, and for which

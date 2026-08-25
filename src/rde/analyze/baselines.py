@@ -41,15 +41,6 @@ def _theorem020_temporal_match(rows: list[dict[str, Any]], witness: str) -> Base
     return BaselineMatch("THEOREM-020", witness, matched, reason)
 
 
-def _exp014_reference() -> BaselineMatch:
-    return BaselineMatch(
-        "EXP-014",
-        "trajectory_u_acum",
-        False,
-        "reference only — scoped trajectory u_acum feasibility negatives",
-    )
-
-
 def compare_baselines(
     fits: list[ScalingFit],
     rows: list[dict[str, Any]],
@@ -62,5 +53,4 @@ def compare_baselines(
             matches.append(_theorem005_slice_rank_match(fit))
         if "recurrence" in w:
             matches.append(_theorem020_temporal_match(rows, fit.witness))
-    matches.append(_exp014_reference())
     return matches

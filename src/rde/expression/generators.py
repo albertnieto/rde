@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 from typing import Iterator
 
-from rde.analyze.tables import numeric_columns
+from rde.analyze.tables import contract_excluded_columns, numeric_columns
 from rde.expression.ast import Expr
 from rde.expression.enumerate import enumerate_expressions, unary_candidates
 
@@ -16,11 +16,28 @@ def metric_variable_columns(
     *,
     max_vars: int = 24,
     exclude_prefixes: tuple[str, ...] = ("metric.", "gen.", "derived."),
+    domain_id: str | None = None,
 ) -> list[str]:
-    """Pick descriptor columns for metric DSL search, preferring |r| with target."""
+    """Pick descriptor columns for metric DSL search, preferring |r| with target.
+
+    `domain_id`, when given, additionally blocks any column the domain's
+    `DomainContract` explicitly marks `predictor_eligible=False` (raw
+    `OUTCOME`/`TARGET_DERIVED` scalars, e.g. `structure_strength`) — fail
+    *open* for columns the contract doesn't catalog at all, so domains
+    without a full catalog keep their current candidate set; only columns
+    the contract actively flags are removed. Without `domain_id`, behavior
+    is unchanged from before this parameter existed.
+
+    This exists because `exclude_prefixes` alone does not catch a raw,
+    un-prefixed `OUTCOME` scalar re-exposed on the row for bookkeeping
+    (e.g. `hsp_functions`'s `structure_strength`, present so
+    `metric.structure_strength` can be computed from it) — that column
+    correlates with the target by construction (`r=1.0`), which is exactly
+    the leak this filter exists to catch and previously did not.
+    """
     from rde.analyze.query import correlate_with_target
 
-    skip = {target, "size", "seed", "family_index"}
+    skip = {target, "size", "seed", "family_index"} | contract_excluded_columns(rows, domain_id)
     hits = correlate_with_target(rows, target, min_abs_r=0.0, exclude=skip)
     ordered: list[str] = []
     seen: set[str] = set()

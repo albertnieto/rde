@@ -43,12 +43,12 @@ class GatedOutcomes:
 #: numerically constant -- floating-point noise, not real signal. Chosen as
 #: ~1e6x machine epsilon (float64 eps ~2.2e-16): generous enough not to
 #: false-positive on a genuinely small-but-real effect, but far enough above
-#: eps to catch the case this guards against (Direction E, 2026-08-19: a
-#: `degree2_entropy` target that was mathematically guaranteed constant by
-#: the cost function's own algebra -- std ~1.25e-15 across 1200 instances --
-#: still produced `outcome_grade_hint=5` because nothing anywhere in the
-#: gate chain checked whether the target actually varied before letting
-#: Phase 6 rediscovery / symbolic R^2 claims through).
+#: eps to catch the case this guards against: a `degree2_entropy` target
+#: that was mathematically guaranteed constant by the cost function's own
+#: algebra -- std ~1.25e-15 across 1200 instances -- still produced
+#: `outcome_grade_hint=5` because nothing anywhere in the gate chain
+#: checked whether the target actually varied before letting Phase 6
+#: rediscovery / symbolic R^2 claims through.
 _DEGENERATE_TARGET_RELATIVE_STD = 1e-9
 _DEGENERATE_TARGET_ABSOLUTE_STD = 1e-12
 
