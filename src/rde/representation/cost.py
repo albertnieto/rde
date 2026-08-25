@@ -25,6 +25,8 @@ _KNOWN_PRIMITIVES = (
     "dft_full",
     "polynomial_vandermonde",
     "dct",
+    # adaptive.py -- data-adapted, not part of grammar.py's fixed registry
+    "klt",
     # layered.py stage-2 primitives (see docstring for each estimate's basis)
     "sort_by_magnitude",
     "sorted_then_difference",
@@ -54,12 +56,16 @@ def _stage_cost(representation_id: str, n: int) -> float:
       (`side = sqrt(n)`), each way — `side` times `dft_full`'s per-row
       estimate at length `side`, i.e. `dft_full`'s formula with `n`
       replaced by `side` and the whole thing scaled by `side` rows.
-    - `polynomial_vandermonde`, `dct`: `~2*n^2` — one dense `(n, n)` matvec
-      each way (this implementation's actual algorithm: a literal
+    - `polynomial_vandermonde`, `dct`, `klt`: `~2*n^2` — one dense `(n, n)`
+      matvec each way (this implementation's actual algorithm: a literal
       orthonormal-basis matmul via `matmul_shared`, not the `O(n log n)`
       fast-DCT algorithm textbooks describe — the honest cost of the code
       that actually runs, not of the theoretically-best algorithm for the
-      same transform).
+      same transform). `klt`'s basis-*fitting* cost (an `O(n^3)` eigendecomposition
+      of the training batch's second-moment matrix) is not counted here —
+      this function estimates per-batch encode/decode cost, the same
+      one-time-setup exclusion `polynomial_vandermonde`'s Vandermonde
+      inversion and `dct`'s basis construction already get.
     """
     if representation_id in ("identity", "matrix_reshape"):
         return 0.0
@@ -78,7 +84,7 @@ def _stage_cost(representation_id: str, n: int) -> float:
         side = int(round(math.sqrt(n)))
         log2side = math.log2(side) if side > 1 else 1.0
         return side * (4.0 * (2.0 * (5.0 * side * log2side)))
-    return 2.0 * n * n  # polynomial_vandermonde, dct
+    return 2.0 * n * n  # polynomial_vandermonde, dct, klt
 
 
 def computational_cost(representation_id: str, n: int) -> float:

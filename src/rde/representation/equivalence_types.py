@@ -28,8 +28,12 @@ whose image's edge set exactly equals the target's?) — see that function's
 docstring for why this is the honest, correctly-scoped instance of the
 name, not a claim about topological homeomorphism (continuous bijection
 with continuous inverse between topological spaces): `RepresentationGraph`
-is a discrete labeled graph, not a topological space, so that notion still
-has nothing real to check it against here.
+is a discrete labeled graph, not a topological space, so that notion has
+nothing real to check it against *here*. `topology.py` now gives topological
+homeomorphism its own genuine, non-vacuous instance elsewhere in this
+package (a plane-rotation orbit-space quotient, unrelated to
+`RepresentationGraph`) — kept out of this module because it is not an
+instance of `StructurePreservingMapClaim`'s graph-theoretic notion.
 """
 
 from __future__ import annotations

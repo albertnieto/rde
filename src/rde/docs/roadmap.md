@@ -158,7 +158,48 @@ The historical implementation slices are engineering chronology only:
    data built as an exact sparse combination of `dct` basis vectors
    (complexity `2.0` vs. `dft_full`'s `13.17`). Open-ended primitive
    invention in general (search for a building block with no concrete
-   target algorithm in mind) remains out of scope.
+   target algorithm in mind) remains out of scope; a *bounded* instance (a
+   data-adapted orthogonal basis, scoped by a preregistered target family
+   and complexity margin) is closed below, after the topological
+   homeomorphism item directly following.
+   A genuine topological homeomorphism: `topology.py` gives
+   `equivalence_types.py`'s previously-declined "topological homeomorphism"
+   its first real, non-vacuous instance — scoped like `dct` (one well-known
+   fact, not open-ended invention). `X = C \ {0}`, `G = Z_n` acting by
+   rotation (the continuous analogue of `structure._cyclic_group_permutations`,
+   and the same rotation group `rde_domains.tsp.circulant`'s
+   `_points_on_circle` already uses); the claim that `f(z) = z**n` induces a
+   homeomorphism `(C\{0})/Z_n -> C\{0}`, checked numerically
+   (`HomeomorphismClaim`: well-definedness, sampled injectivity, sampled
+   continuity, and one honest disproven first attempt — a naive
+   single-valued branch inverse is *not* continuous at the fundamental-domain
+   seam, `~1e-8` apart in image vs. `~1.0` apart under that naive inverse)
+   and formally (`symbolic.FormalCertificate`, reused: exact proofs of
+   well-definedness for every `n` tried, and injectivity for `n = 3, 4, 5, 6,
+   8` — `n = 7` is a disclosed limitation of the `sympy.nsimplify` proof
+   strategy used, not a bug; see
+   `docs/representation-synthesis-theory.md` §12). Not implied by this
+   result: homeomorphism checking for the actual `tsp_circulant_symmetry`
+   distance-matrix orbit space (a discrete permutation group on `R^{n x n}`,
+   a harder, separate case) remains open.
+   A bounded instance of open-ended primitive invention: `adaptive.py`'s
+   `klt` — one well-known, textbook-standard fact (the Karhunen-Loeve
+   theorem), not open-ended search, the same `dct`-style scoping. Fit from
+   a training batch rather than analytic, so deliberately not added to
+   `grammar.py`'s fixed `_PRIMITIVE_BUILDERS` registry. Preregistered
+   holdout comparison (`run_klt_holdout_comparison`, fixed target family,
+   margin, and seeds decided before running): on an exact rank-3 Gaussian
+   factor family, `klt` reaches holdout complexity `3.0` against `dft`'s
+   `9.0` (best fixed primitive) — ratio `0.333`, under the preregistered
+   `0.5` margin. Honest negative result kept in the record: the same
+   comparison with noise added shows no compression for anyone at this
+   grammar's real `eps=1e-6` threshold — that metric only rewards exact
+   near-zero coefficients, not approximate low rank, which is why the
+   preregistered target family is noise-free.
+   `run_klt_noise_sensitivity` turns that single negative data point into a
+   real characterization: sweeping `noise_scale` from `0` to `1e-2` finds a
+   smooth transition centered almost exactly on `eps=1e-6`, not a step
+   function (see `docs/representation-synthesis-theory.md` §13).
 
 The numbers above do not correspond to G0–G5.
 

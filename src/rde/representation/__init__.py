@@ -140,10 +140,69 @@ Phase 7 ("open discovery": an unknown object through the whole pipeline end
 to end) is exercised as an integration test
 (`tests/rde/representation/test_open_discovery_integration.py`), not as new
 library code — it composes Phases 1-6 as they already exist.
+
+- `topology.py` — the first genuinely non-vacuous topological homeomorphism
+  instance (`equivalence_types.py` previously declined to claim this:
+  `RepresentationGraph` is a discrete labeled graph, not a topological
+  space). Scoped like `grammar.py`'s `dct` (one well-known fact, not
+  open-ended invention): `X = C \\ {0}`, `G = Z_n` acting by rotation (the
+  continuous analogue of `structure._cyclic_group_permutations`, and the
+  same rotation group `rde_domains.tsp.circulant`'s `_points_on_circle`
+  already uses), and the claim that `f(z) = z**n` induces a homeomorphism
+  `(C\\{0})/Z_n -> C\\{0}`. Numeric side (`HomeomorphismClaim`):
+  well-definedness on orbits, sampled injectivity, sampled continuity, and
+  one honest disproven-first-attempt — a single-valued "principal branch"
+  inverse on a fundamental domain is *not* continuous at the domain seam
+  (two points ~1e-8 apart in image are ~1.0 apart under that naive inverse),
+  which is exactly why the homeomorphism claim must be about the abstract
+  quotient space, not a literal fundamental-domain subset of `C`. Formal
+  side reuses `symbolic.FormalCertificate`: `prove_rotation_quotient_well_defined`
+  closes for every `n` tried; `prove_rotation_quotient_injective` closes for
+  `n = 3, 4, 5, 6, 8` but not `n = 7` (`cos(pi/7)` is not expressible in the
+  real-radical form the `sympy.nsimplify` strategy used here searches for —
+  a disclosed limitation of that proof strategy, not a bug). Not done, and
+  not implied by this result: homeomorphism checking for the actual
+  `tsp_circulant_symmetry` distance-matrix orbit space (a discrete
+  permutation group on `R^{n x n}`, a harder and separate case) remains open.
+- `adaptive.py` — a bounded instance of "open-ended primitive invention"
+  (theory doc §5 / roadmap.md: "search for a building block with no
+  concrete target algorithm in mind" was out of scope for lacking a finish
+  line). Scoped like `dct`: one well-known, textbook-standard fact (the
+  Karhunen-Loeve theorem: the covariance eigenbasis is the optimal
+  orthonormal linear basis for concentrating variance into few
+  coefficients), not open-ended search. `build_klt_representation` fits a
+  basis from a training batch — architecturally distinct from every
+  `grammar.py` primitive (analytic, needs only `n`), so it is deliberately
+  *not* added to `grammar.py`'s `_PRIMITIVE_BUILDERS` registry, the same way
+  `operator_discovery.py` stays standalone from `operator.py`. Preregistered
+  holdout comparison (`run_klt_holdout_comparison`, decided before being
+  run): on an exact rank-3 Gaussian factor family no fixed analytic basis
+  has any structural relationship to, `klt` reaches holdout complexity
+  `3.0` (exactly the true subspace dimension) against `dft`'s `9.0` (the
+  best fixed primitive) — ratio `0.333`, under the preregistered `0.5`
+  margin. Honest negative result, not hidden: the same comparison with
+  noise added shows *no* compression for `klt` under this grammar's real
+  `eps=1e-6` threshold (noise floor exceeds `eps` almost surely) — this
+  metric only rewards exact near-zero coefficients, not approximate low
+  rank, which is why the preregistered target family is noise-free.
+  `run_klt_noise_sensitivity` characterizes exactly where that breakdown
+  happens (a smooth transition centered almost exactly on `eps=1e-6`, swept
+  from `noise_scale=0` to `1e-2`) rather than leaving it at one pass/one
+  fail data point; `_best_grammar_holdout_complexity` now raises a clear
+  `RuntimeError` instead of an opaque `ValueError` if nothing ever verifies.
 """
 
 from __future__ import annotations
 
+from rde.representation.adaptive import (
+    KltHoldoutComparison,
+    KltNoiseSensitivityPoint,
+    build_klt_representation,
+    fit_klt_basis,
+    low_rank_factor_batch,
+    run_klt_holdout_comparison,
+    run_klt_noise_sensitivity,
+)
 from rde.representation.array_backend import (
     ArraySearchBackend,
     MlxSearchBackend,
@@ -224,6 +283,16 @@ from rde.representation.symbolic import (
     discover_parity_claim,
     prove_vandermonde_inverse,
 )
+from rde.representation.topology import (
+    HomeomorphismClaim,
+    canonical_representative,
+    check_map_continuity_sampled,
+    check_naive_branch_inverse_discontinuous,
+    check_quotient_injective_sampled,
+    check_quotient_well_defined,
+    prove_rotation_quotient_injective,
+    prove_rotation_quotient_well_defined,
+)
 from rde.representation.transformation import Transformation
 
 __all__ = [
@@ -236,6 +305,9 @@ __all__ = [
     "EquivalenceResult",
     "FormalCertificate",
     "HoldoutAudit",
+    "HomeomorphismClaim",
+    "KltHoldoutComparison",
+    "KltNoiseSensitivityPoint",
     "MlxSearchBackend",
     "NumpySearchBackend",
     "OBJECTIVE_NAMES",
@@ -252,9 +324,11 @@ __all__ = [
     "atomic_registry",
     "audit_holdout",
     "best_representation",
+    "build_klt_representation",
     "build_layered_representations",
     "build_primitive_representations",
     "canonical_representation",
+    "canonical_representative",
     "certify_roundtrip",
     "check_conservation",
     "check_duality",
@@ -262,7 +336,11 @@ __all__ = [
     "check_isometry",
     "check_linear_isomorphism",
     "check_low_rank",
+    "check_map_continuity_sampled",
+    "check_naive_branch_inverse_discontinuous",
     "check_periodicity",
+    "check_quotient_injective_sampled",
+    "check_quotient_well_defined",
     "check_roundtrip",
     "check_separability",
     "check_sparsity",
@@ -276,16 +354,22 @@ __all__ = [
     "discover_parity_claim",
     "dominance_matrix",
     "enumerate_chains",
+    "fit_klt_basis",
     "get_array_backend",
     "linear_probe_matrices",
+    "low_rank_factor_batch",
     "objectives_from_candidates",
     "off_diagonal_energy",
     "pareto_rank",
     "primitive_names",
     "probe_encode_matrix",
+    "prove_rotation_quotient_injective",
+    "prove_rotation_quotient_well_defined",
     "prove_vandermonde_inverse",
     "rank_by_diagonalization",
     "rank_representations",
+    "run_klt_holdout_comparison",
+    "run_klt_noise_sensitivity",
     "search_chains",
     "search_report_payload",
     "serialized_size_complexity",

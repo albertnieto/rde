@@ -493,3 +493,173 @@ same dense-matmul estimate as `polynomial_vandermonde`, since this
 implementation is a literal orthonormal-matrix matmul, not the `O(n log n)`
 fast-DCT algorithm textbooks describe — the honest cost of the code that
 actually runs).
+
+## 12. A genuine topological homeomorphism: `(C\{0})/Z_n ≅ C\{0}` via `z ↦ z**n`
+
+`equivalence_types.py` had explicitly declined to claim topological
+homeomorphism: `RepresentationGraph` is a discrete labeled graph, not a
+topological space, so "continuous bijection with continuous inverse" had
+nothing real to check it against. Same honest-scope move as §11's `dct`:
+not "prove homeomorphism in general" (open-ended, no finish line — checking
+it on this package's own linear grammar primitives would be vacuous, since
+every invertible linear map between finite-dimensional vector spaces is
+automatically a homeomorphism), but one concrete, non-vacuous textbook fact.
+
+**The claim.** `X = C \ {0}` (standard/Euclidean topology), `G = Z_n` acting
+by multiplication by n-th roots of unity — the continuous analogue of
+`structure._cyclic_group_permutations`'s discrete index-permutation action,
+and literally the same rotation group `rde_domains.tsp.circulant`'s
+`_points_on_circle` already uses to plant circulant symmetry
+(`theta = 2*pi*k/n`). The map induced by `f(z) = z**n` on the orbit space
+`X/G` is a homeomorphism onto `X` — a finite branched-covering / orbifold
+quotient, standard in any topology text, implemented and checked here rather
+than asserted.
+
+**Numeric verification (`topology.py`, `HomeomorphismClaim`).**
+`check_quotient_well_defined` confirms `f` is constant across sampled `Z_n`
+orbits (max spread `~1.7e-19` for random complex samples at `n=6` —
+floating-point roundoff, not exactly `0`, as expected for a numeric check of
+an algebraic identity). `check_quotient_injective_sampled` finds `0`
+collisions among `19900` distinct-orbit pairs from `200` random samples at
+`n=6` — honest sample-based evidence, not a proof.
+`check_map_continuity_sampled` confirms no blowup under finite-difference
+perturbation against a local-Lipschitz bound.
+
+**Honest disproven first attempt.** The obvious way to write "the inverse"
+is a single-valued principal branch on a fundamental domain (angle in
+`[0, 2*pi/n)`, principal n-th root). `check_naive_branch_inverse_discontinuous`
+verifies this is *wrong*: two points `epsilon`-close to the domain seam have
+images `f(z)` that are `~1.2e-8` apart (`f` correctly nearly-identifying
+them), but the naive branch inverse recovers points `~1.0` apart — a real,
+verified discontinuity, not a tuning artifact. This is exactly why the
+homeomorphism claim must be stated on the *abstract* quotient space (orbits
+as points, quotient topology), never by picking an explicit global inverse
+on a literal fundamental-domain subset of `C` — the same distinction
+`equivalence_types.py` had previously flagged as unimplemented.
+
+**Formal verification (`symbolic.FormalCertificate`, reused, not
+duplicated).** `prove_rotation_quotient_well_defined(n)` proves
+`(zeta*z)**n == z**n` exactly via `sympy.simplify`, closing to `0` for every
+`n` tried (`3` through at least `8`). `prove_rotation_quotient_injective(n)`
+proves the classical factorization
+`z1**n - z2**n == prod_{k=0}^{n-1}(z1 - zeta**k * z2)` via
+`sympy.nsimplify(sympy.expand_complex(...), [sympy.pi], rational=False)`.
+Closes exactly for `n = 3, 4, 5, 6, 8` — but **not** `n = 7`:
+`cos(pi/7)`/`cos(2*pi/7)` are not expressible in the real-radical normal
+form this `nsimplify` strategy searches for (a genuine Galois-theoretic
+obstruction — 7 prime, no solvable radical tower of the kind `nsimplify`
+looks for — not a numerical bug). Scoped per-`n`, `proved`/`disproved`, the
+same honest limitation `prove_vandermonde_inverse(n)` already accepts by
+only ever claiming one concrete `n` at a time; the `n=7` case is kept as a
+disclosed limitation in the test suite rather than quietly excluded.
+
+**What this does not claim.** Applying this same quotient/homeomorphism
+machinery to the actual `tsp_circulant_symmetry` distance-matrix orbit space
+— a *discrete* permutation group acting on `R^{n x n}`, not a continuous
+rotation acting on `C` — is a harder, separate case and remains open.
+
+## 13. A bounded instance of open-ended primitive invention: `adaptive.py`'s `klt`
+
+§5 flagged "no genuinely novel primitive invention... that remains
+open-ended research, not a Phase 2 item with a clear scope." §11's `dct`
+closed one instance of that gap for *analytic* primitives; this section
+closes an instance for *data-adapted* ones, same honest-scope move: not
+"invent any building block" (no finish line), but the Karhunen-Loeve
+theorem — a textbook fact — the covariance eigenbasis is the optimal
+orthonormal linear basis for concentrating a distribution's variance into
+the fewest coefficients, which is exactly what this grammar's
+near-zero-coefficient `complexity` metric rewards.
+
+**Architectural boundary, kept explicit.** Every `grammar.py` primitive
+(`dft`, `dct`, ...) is analytic: constructible from `n` alone.
+`adaptive.build_klt_representation` needs a training batch, so it is
+deliberately *not* added to `grammar.py`'s `_PRIMITIVE_BUILDERS` registry —
+`program_search.enumerate_chains` and every other caller that assumes "any
+grammar primitive is buildable from `n` alone" would silently break
+otherwise. It stays standalone, the way `operator_discovery.py` (recovers
+an unknown operator from samples) stays standalone from `operator.py`
+(transports an already-known one). Strictly linear (no mean subtraction —
+the eigenbasis of the sample *second moment*, not the centered covariance),
+so `equivalence_types.py`'s linear/isometry/isomorphism probes apply to it
+unmodified, and matching every other primitive's `"linear"` tag.
+
+**The preregistered comparison, decided before being run.** Does a `klt`
+basis fit on a `train_batch` beat the best of the 7 grammar primitives that
+verify their own roundtrip at `n=16` (`polynomial_vandermonde` fails its own
+tolerance at this `n`, unrelated to this comparison) on an *independent*
+`holdout_batch` from the same distribution, by at least `2x` lower
+complexity? Target family: `x = z @ A.T`, `A` a fixed `(16, 3)` matrix with
+orthonormal columns (QR of a Gaussian draw), `z ~ N(0, I_3)` — an exact
+rank-3 Gaussian factor model no fixed analytic basis has any structural
+relationship to, since `A`'s column space is random and shares no structure
+with any basis's fixed coordinate/frequency axes. `train_seed=0`,
+`holdout_seed=1`, `500` samples each, `margin_threshold=0.5`. One run, no
+re-rolling to fish for a better margin — the same discipline
+`rde_domains.hsp_functions.preregistered_experiment` already holds itself to.
+
+**Actual result**, verified numerically before being written here: `klt`
+reaches holdout complexity `3.0` — exactly `k`, the true subspace dimension
+— against `dft`'s `9.0` (the best of the verified fixed primitives). Ratio
+`0.333`, comfortably under the `0.5` margin
+(`tests/rde/representation/test_adaptive.py::
+test_preregistered_klt_holdout_comparison_beats_the_margin`). Every other
+fixed primitive does no better than `dft`: `identity`, `matrix_reshape`,
+`dft_full`, and `dct` all report the full `16.0` (a random 3-dimensional
+subspace has no relationship to the identity basis, the full complex
+Fourier basis, or the DCT basis), and `difference`/`sorted_permutation` are
+worse still.
+
+**Honest negative result, not swept under the rug.** The same comparison
+with i.i.d. Gaussian noise added to `x` (`noise_scale=0.05`, still rank-3 in
+expectation) shows *no* compression for `klt` under this grammar's real
+`eps=1e-6` threshold: every coefficient, including the 13 "noise"
+directions, exceeds `1e-6` in magnitude almost surely, so `klt` reports the
+full `16.0` — identical to `identity`
+(`tests/rde/representation/test_adaptive.py::
+test_noisy_variant_shows_no_compression_for_anyone_honest_negative_result`).
+The same class of mistake §11 documents on purpose for `dct`'s first
+loose-`eps` claim: this grammar's complexity metric only rewards *exact*
+near-zero coefficients, not *approximately* low rank under noise (a
+genuinely different, harder notion — truncation with a disclosed nonzero
+reconstruction error, which none of this grammar's `exact=True` primitives
+attempt). The preregistered target family is deliberately noise-free
+specifically to stay honest about what this metric can actually show.
+
+**Characterizing the breakdown, not just one negative data point.**
+`run_klt_noise_sensitivity` sweeps `noise_scale` across `(0, 1e-7, 5e-7,
+1e-6, 5e-6, 1e-5, 1e-4, 1e-3, 1e-2)` — three orders of magnitude either side
+of `eps=1e-6` — and finds a real, smooth transition, not a step function:
+complexity stays pinned at the noise-free `3.0` through `1e-7` (an order of
+magnitude below `eps`), rises to `~3.6` at `5e-7`, `~7.1` right at `eps`
+itself (`1e-6`), `~14.9` at `1e-5`, and asymptotes toward (without exactly
+reaching) `16.0` from `1e-4` on — exactly the shape Gaussian coefficient
+magnitudes crossing a fixed bar should produce
+(`tests/rde/representation/test_adaptive.py::
+test_noise_sensitivity_sweep_is_flat_below_eps_and_saturates_above_it`). A
+`train_count` sweep (`500` down to `3`, the minimum that spans a rank-3
+subspace) was also checked, at `noise_scale=0.0`, and found completely
+flat — an honest non-result kept in the record rather than presented as the
+headline finding it was originally expected to be: with zero noise, any `k`
+linearly independent training samples exactly span the true subspace, so
+there is no estimation variance for a larger `train_count` to reduce
+(`tests/rde/representation/test_adaptive.py::
+test_train_count_does_not_affect_the_noise_free_result`).
+
+**Robustness fixes made alongside this characterization.**
+`_best_grammar_holdout_complexity` (factored out of
+`run_klt_holdout_comparison`, now shared with `run_klt_noise_sensitivity`)
+raises a `RuntimeError` naming the actual problem if no grammar primitive
+ever verifies its own roundtrip against a holdout batch, rather than
+`min()` on an empty dict raising `ValueError: min() arg is an empty
+sequence` three frames deep — not reachable at `n=16` today (`7` of `8`
+primitives verify), forced via monkeypatch in
+`tests/rde/representation/test_adaptive.py::
+test_best_grammar_holdout_complexity_raises_a_clear_error_when_nothing_verifies`
+rather than left unexercised.
+
+**What this does not claim.** A single bounded instance, not a general
+"discover any useful data-adapted basis" capability — no other family,
+covariance structure, or non-Gaussian distribution has been tried. `klt`
+also cannot be composed via `program_search.enumerate_chains` (the
+architectural-boundary paragraph above), so it does not participate in
+depth-`K` composition search the way every `grammar.py` primitive does.
