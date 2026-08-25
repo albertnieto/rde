@@ -28,6 +28,7 @@ from rde.backends.resolve import (
     require_mlx,
     resolve_compute_backend,
     resolve_expr_backend,
+    usable_backends,
 )
 
 
@@ -87,5 +88,6 @@ __all__ = [
     "require_mlx",
     "resolve_compute_backend",
     "resolve_expr_backend",
+    "usable_backends",
     "write_crossover_table",
 ]

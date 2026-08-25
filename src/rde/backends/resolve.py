@@ -164,6 +164,55 @@ def compute_backend_choices() -> list[str]:
     return list(_COMPUTE_BACKENDS)
 
 
+def _torch_cpu_usable() -> bool:
+    """Torch import succeeds and tensors actually convert back to NumPy.
+
+    A loose ``torch`` pin can resolve to a wheel built against NumPy 1.x's
+    C-ABI while this environment runs NumPy 2.x; ``import torch`` still
+    succeeds in that case, and the raw ``Tensor.numpy()`` bridge raises --
+    but ``torch_mps_backend._as_numpy`` has a ctypes fallback for exactly
+    that case, so probe through it rather than the raw bridge.
+    """
+    try:
+        from rde.backends.torch_mps_backend import _as_numpy
+        import torch
+
+        _as_numpy(torch.zeros(1, dtype=torch.float64))
+        return True
+    except Exception:
+        return False
+
+
+def _torch_mps_usable() -> bool:
+    if not _torch_cpu_usable():
+        return False
+    try:
+        import torch
+
+        return bool(torch.backends.mps.is_available())
+    except Exception:
+        return False
+
+
+def usable_backends() -> list[str]:
+    """Compute backends that will actually run on this machine right now.
+
+    Unlike :func:`compute_backend_choices` (every name the CLI accepts, so a
+    bad ``--backend`` value raises a clear :class:`GpuBackendError` instead of
+    a bare argparse rejection), this filters to backends that will not raise
+    -- no ``mlx`` off Apple Silicon, no torch backends when the resolved
+    torch build's NumPy bridge is broken. Use this for test skip guards.
+    """
+    result = ["numpy"]
+    if mlx_usable():
+        result.append("mlx")
+    if _torch_mps_usable():
+        result.append("torch_mps")
+    if _torch_cpu_usable():
+        result.append("torch_cpu")
+    return result
+
+
 def expr_backend_choices() -> list[str]:
     return list(_EXPR_BACKENDS)
 

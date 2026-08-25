@@ -45,7 +45,8 @@ def test_resume_index_shim(tmp_path):
 
 
 def test_torch_empty_env_constant_parity():
-    torch = pytest.importorskip("torch")
+    pytest.importorskip("torch")
+    from rde.backends.torch_mps_backend import _as_numpy
     from rde.expression.torch_eval import evaluate_expr_torch, numpy_env_to_torch
 
     expr = Expr.const(3.5)
@@ -53,4 +54,7 @@ def test_torch_empty_env_constant_parity():
     torch_env = numpy_env_to_torch(env)
     values = evaluate_expr_torch(expr, torch_env)
     expected = evaluate_expr(expr, env)
-    assert np.allclose(values.detach().cpu().numpy(), expected)
+    # Route through the shared torch->NumPy helper (same path production code
+    # uses), not a raw `.numpy()` call: a NumPy-1-ABI torch wheel under
+    # NumPy 2.x breaks the raw bridge (see `_as_numpy`'s docstring).
+    assert np.allclose(_as_numpy(values), expected)

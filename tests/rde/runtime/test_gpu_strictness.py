@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 
 import numpy as np
+import pytest
 
 from rde.backends.resolve import GpuBackendError, resolve_compute_backend, resolve_expr_backend
 from rde.expression.batch import prepare_device_envs
@@ -37,6 +38,7 @@ class TestBackendResolveStrict(unittest.TestCase):
 
     @patch("rde.backends.resolve.mlx_usable", return_value=True)
     def test_require_gpu_keeps_mlx_on_small_rows(self, _mock: object) -> None:
+        pytest.importorskip("mlx")
         env = {"x": np.array([1.0, 2.0, 3.0])}
         backend, *_rest, reason = prepare_device_envs(
             env,

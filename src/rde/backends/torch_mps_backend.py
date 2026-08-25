@@ -47,8 +47,17 @@ def _as_numpy(tensor) -> np.ndarray:
     try:
         return t.numpy(force=True).astype(float, copy=False).reshape(tensor.shape)
     except (RuntimeError, TypeError):
-        # ABI mismatch: bulk byte copy, still O(n) not O(n) Python scalar ops.
-        raw = t.numpy(force=True)
+        # torch's Tensor.numpy() bridge is a C-API call into NumPy's array
+        # struct; a torch wheel built against NumPy 1.x's ABI raises here
+        # under NumPy 2.x (no newer torch wheel exists for Intel macOS to
+        # upgrade past). Read the tensor's own memory directly via its
+        # data pointer instead -- a bulk `ctypes` copy, not the broken
+        # bridge, and still O(n) bytes, not a Python-level per-element loop.
+        import ctypes
+
+        nbytes = t.numel() * t.element_size()
+        buf = (ctypes.c_byte * nbytes).from_address(t.data_ptr())
+        raw = bytes(buf)
         return np.frombuffer(raw, dtype=np.float64).copy().reshape(tensor.shape)
 
 

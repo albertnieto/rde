@@ -42,6 +42,7 @@ def test_ranker_on_progress_reports_evaluated_counts():
 
 
 def test_ranker_prepares_device_env_once_with_prebuilt_chunk_envs(monkeypatch):
+    pytest.importorskip("mlx")
     calls: list[int] = []
     real_prepare = batch_mod.prepare_device_envs
 

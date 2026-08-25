@@ -13,6 +13,7 @@ from rde.backends import (
     get_compute_backend,
     load_crossover_table,
     recommended_batch_size,
+    usable_backends,
 )
 from rde.backends.numpy_backend import NumpyBackend
 from rde.features.landscape import _hamming_weights
@@ -70,8 +71,8 @@ def test_compute_backend_costs(backend_name: str):
 
 
 def test_torch_cpu_backend_if_available():
-    if "torch_cpu" not in available_backends():
-        pytest.skip("torch_cpu not listed")
+    if "torch_cpu" not in usable_backends():
+        pytest.skip("torch_cpu not usable on this machine")
     rng = np.random.default_rng(1)
     q = _random_upper_triangular(rng, 4)
     ref = NumpyBackend().all_costs(q)
@@ -80,12 +81,8 @@ def test_torch_cpu_backend_if_available():
 
 
 def test_torch_mps_backend_if_available():
-    if "torch_mps" not in available_backends():
-        pytest.skip("torch_mps not listed")
-    import torch
-
-    if not torch.backends.mps.is_available():
-        pytest.skip("MPS not available on this machine")
+    if "torch_mps" not in usable_backends():
+        pytest.skip("torch_mps not usable on this machine")
     rng = np.random.default_rng(2)
     q = _random_upper_triangular(rng, 4)
     ref = NumpyBackend().all_costs(q)
@@ -94,7 +91,7 @@ def test_torch_mps_backend_if_available():
 
 
 def test_mlx_backend_if_available():
-    if "mlx" not in available_backends():
+    if "mlx" not in usable_backends():
         pytest.skip("mlx not available on this machine")
     rng = np.random.default_rng(3)
     q = _random_upper_triangular(rng, 4)
@@ -104,7 +101,7 @@ def test_mlx_backend_if_available():
 
 
 def test_mlx_assignment_matrix_is_reused():
-    if "mlx" not in available_backends():
+    if "mlx" not in usable_backends():
         pytest.skip("mlx not available on this machine")
     backend = get_compute_backend("mlx")
     backend._assignment_cache.clear()
@@ -194,7 +191,7 @@ def test_full_instance_batch_matches_scalar():
 
 
 def test_mlx_full_instance_batch_if_available():
-    if "mlx" not in available_backends():
+    if "mlx" not in usable_backends():
         pytest.skip("mlx not available")
     rng = np.random.default_rng(5)
     indices = [1, 2, 4]
