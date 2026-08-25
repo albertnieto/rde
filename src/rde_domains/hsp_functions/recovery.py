@@ -6,6 +6,7 @@ module and never receive ``planted``.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -13,6 +14,19 @@ import numpy as np
 from rde.core.protocols import QueryTape
 from rde_domains.hsp_functions.functions import FunctionInstance
 from rde_domains.hsp_functions.sampling import query_budget_for
+
+
+@dataclass(frozen=True)
+class AbelianDihedralSecret:
+    """The two independent hidden shifts `abelian_dihedral_blend` mixes per query.
+
+    Distinct type from a plain tuple so `HspFunctionRecovery.match` can tell
+    this apart from `quaternion_coset`'s unordered coset tuple -- this one is
+    ordered and two-part by construction, not a set.
+    """
+
+    s_abelian: int
+    s_dihedral: int
 
 
 class HspFunctionRecovery:
@@ -55,7 +69,14 @@ class HspFunctionRecovery:
             from rde_domains.hsp_functions.functions import _Q8_HIDDEN
 
             return tuple(sorted(_Q8_HIDDEN))
-        if family in {"generic_random_control", "abelian_dihedral_blend"}:
+        if family == "abelian_dihedral_blend":
+            return AbelianDihedralSecret(
+                s_abelian=int(params["s_abelian"]), s_dihedral=int(params["s_dihedral"])
+            )
+        if family == "multiplicative_fold":
+            s, s2, s3 = int(params["s"]), int(params["s2"]), int(params["s3"])
+            return tuple(sorted({1, s, s2, s3}))
+        if family == "generic_random_control":
             return None
         if family == "hsp_recipe":
             pairing = params.get("pairing")
@@ -77,6 +98,16 @@ class HspFunctionRecovery:
             return recovered is None
         if recovered is None:
             return False
+        if isinstance(planted, AbelianDihedralSecret):
+            if not isinstance(recovered, tuple) or len(recovered) != 2:
+                return False
+            s_ab, s_di = recovered
+            # A generic search can pair any two protocols, including ones
+            # that themselves return tuples (e.g. GroupClosureProgram) --
+            # such a pairing is simply not a match here, not a crash.
+            if not isinstance(s_ab, (int, np.integer)) or not isinstance(s_di, (int, np.integer)):
+                return False
+            return int(s_ab) == planted.s_abelian and int(s_di) == planted.s_dihedral
         if isinstance(planted, tuple) and not isinstance(recovered, tuple):
             return False
         if isinstance(recovered, tuple) and not isinstance(planted, tuple):

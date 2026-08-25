@@ -27,6 +27,16 @@ def _pair_values(tape: QueryTape, op: str) -> list[int]:
                 v = (base + other) % mod
             elif op == "diff":
                 v = (other - base) % mod
+            elif op == "ratio":
+                # The multiplicative counterpart of "diff": how a hidden
+                # subgroup of the *multiplicative* group Z_mod^* (rather
+                # than the additive/XOR group) relates two colliding
+                # points. Undefined when `base` shares a factor with
+                # `mod` (no inverse) -- skip that pair rather than guess.
+                try:
+                    v = (other * pow(base, -1, mod)) % mod
+                except ValueError:
+                    continue
             else:
                 raise ValueError(op)
             if v:
@@ -38,6 +48,23 @@ def _mode_or_none(values: list[int]) -> int | None:
     if not values:
         return None
     return int(Counter(values).most_common(1)[0][0])
+
+
+def _mode_or_none_confident(values: list[int], min_ratio: float) -> int | None:
+    """Mode of ``values``, abstaining unless the winner leads the runner-up by ``min_ratio``.
+
+    A plain mode always answers, even off a weak plurality; this prefers an
+    honest abstain (``None``) to a low-confidence guess.
+    """
+    if not values:
+        return None
+    counts = Counter(values).most_common(2)
+    top_val, top_freq = counts[0]
+    if len(counts) > 1:
+        runner_freq = counts[1][1]
+        if runner_freq > 0 and top_freq < min_ratio * runner_freq:
+            return None
+    return int(top_val)
 
 
 class XorCollisionExtractor:

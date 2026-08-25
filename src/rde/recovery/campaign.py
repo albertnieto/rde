@@ -129,6 +129,7 @@ def assess_protocol_search(rows: Sequence[RecoveryRow]) -> ProtocolSearchVerdict
         "pipeline_min_recall": PIPELINE_MIN_RECALL,
         "discovery_min_recall": DISCOVERY_MIN_RECALL,
         "pipeline_ok": pipeline_ok,
+        "catalog_size": float(len(protocols)),
         "n_candidates": float(len(candidates)),
         "n_confirmed": float(len(confirmed)),
         "pipeline_simon_n24": pipeline_rates.get("simon", {}).get("24", float("nan")),

@@ -40,7 +40,9 @@ PHASE3_POPULATION = FAMILIES_HELD_OUT + FAMILIES_PHASE3_DISCOVERY
 PATH_B_HEISENBERG_FAMILY = "heisenberg_v_low_register"
 KNOWN_FAMILIES = tuple(
     dict.fromkeys(
-        ALL_FAMILIES + FAMILIES_PHASE3_DISCOVERY + ("hsp_recipe", PATH_B_HEISENBERG_FAMILY)
+        ALL_FAMILIES
+        + FAMILIES_PHASE3_DISCOVERY
+        + ("hsp_recipe", PATH_B_HEISENBERG_FAMILY, "multiplicative_fold")
     )
 )
 RECIPE_FAMILY = "hsp_recipe"
@@ -244,6 +246,31 @@ def quaternion_right_mul(x: int, k_q: int) -> int:
     return (rest << 3) | int(_Q8_MUL[q, k_q & 7])
 
 
+def _multiplicative_fold_coset_repr(
+    x: int | np.ndarray, s: int, s2: int, s3: int, modulus: int
+) -> int | np.ndarray:
+    """Canonical representative of the order-4 orbit {x, sx, s^2x, s^3x} mod `modulus`.
+
+    Every other family in this module hides its structure via XOR or
+    additive/cyclic shift -- all instances of the same underlying operation
+    (bit-flip translation). This one hides a subgroup of the *multiplicative*
+    group of units mod `modulus` instead: a genuinely different abelian
+    group action, not expressible as any fixed XOR mask (multiplication by
+    an order-4 unit mixes bits via carries, unlike the order-2 "flip a
+    fixed bit" case). Well-defined only on units mod `modulus` (odd x, since
+    `modulus` is a power of two) -- `_evaluate`/`_evaluate_batch` route even
+    x through an independent label instead, exactly like the noise-gated
+    branches above, except the gate here is the exact (not probabilistic)
+    boundary of where the group action is even defined.
+    """
+    if isinstance(x, np.ndarray):
+        xs = x.astype(np.int64, copy=False)
+        orbit = np.stack([xs, (xs * s) % modulus, (xs * s2) % modulus, (xs * s3) % modulus])
+        return orbit.min(axis=0)
+    xi = int(x)
+    return min(xi, (xi * s) % modulus, (xi * s2) % modulus, (xi * s3) % modulus)
+
+
 def _quaternion_coset_repr(x: int | np.ndarray) -> int | np.ndarray:
     if isinstance(x, np.ndarray):
         xs = x.astype(np.int64, copy=False)
@@ -334,6 +361,12 @@ def _evaluate(inst: FunctionInstance, x: int) -> int:
             return _label_hash(inst.seed, x, salt=52)
         coset = _quaternion_coset_repr(x)
         return _label_hash(inst.seed, int(coset), salt=53)
+    if fam == "multiplicative_fold":
+        s, s2, s3 = p["s"], p["s2"], p["s3"]
+        if x % 2 == 0:
+            return _label_hash(inst.seed, x, salt=71)
+        coset = _multiplicative_fold_coset_repr(x, s, s2, s3, inst.x_size)
+        return _label_hash(inst.seed, int(coset), salt=73)
     if fam == RECIPE_FAMILY:
         from rde_domains.hsp_functions.recipes import evaluate_recipe
 
@@ -406,6 +439,15 @@ def _evaluate_batch(inst: FunctionInstance, xs: np.ndarray) -> np.ndarray:
         structured = _label_hash_batch(inst.seed, coset, salt=53)
         independent = _label_hash_batch(inst.seed, xs, salt=52)
         return np.where(broken, independent, structured)
+    if fam == "multiplicative_fold":
+        s, s2, s3 = p["s"], p["s2"], p["s3"]
+        even = (xs % 2) == 0
+        coset = np.asarray(
+            _multiplicative_fold_coset_repr(xs, s, s2, s3, inst.x_size), dtype=np.int64
+        )
+        structured = _label_hash_batch(inst.seed, coset, salt=73)
+        independent = _label_hash_batch(inst.seed, xs, salt=71)
+        return np.where(even, independent, structured)
     if fam == RECIPE_FAMILY:
         from rde_domains.hsp_functions.recipes import evaluate_recipe_batch
 
@@ -489,6 +531,23 @@ def make_instance(family: str, n_bits: int, seed: int) -> FunctionInstance:
             "structure_strength": 1.0 - structure_break,
         }
         return FunctionInstance(family, "gf2", n_bits, x_size, seed, params)
+    if family == "multiplicative_fold":
+        if n_bits < 4:
+            raise ValueError("multiplicative_fold requires n_bits >= 4 (needs an order-4 unit mod 2**n_bits)")
+        # 5 generates the cyclic factor of (Z/2**n_bits Z)* with order
+        # 2**(n_bits-2) for n_bits >= 3 (standard fact); raising to
+        # 2**(n_bits-4) yields an element of order exactly 4. Its inverse
+        # (== its cube, since it has order 4) is the other order-4 element
+        # reachable this way -- seed picks between the two so the secret
+        # actually varies per instance instead of being a fixed constant.
+        base_pow = 1 << (n_bits - 4)
+        s0 = pow(5, base_pow, x_size)
+        s0_inv = pow(s0, 3, x_size)
+        s = s0 if seed % 2 == 0 else s0_inv
+        s2 = pow(s, 2, x_size)
+        s3 = pow(s, 3, x_size)
+        params = {"s": s, "s2": s2, "s3": s3, "structure_strength": 0.5}
+        return FunctionInstance(family, "multiplicative", n_bits, x_size, seed, params)
     if family == RECIPE_FAMILY:
         raise ValueError("hsp_recipe requires recipes.make_recipe_instance(n_bits, seed, recipe_id)")
     raise AssertionError("unreachable")

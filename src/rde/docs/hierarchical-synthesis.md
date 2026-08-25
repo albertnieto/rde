@@ -108,7 +108,7 @@ the code.
 | **GATES** | **Not built** | — |
 | **Gate-level resource accounting** (\(G\), \(D\), \(N_q\), \(N_{\mathrm{ancilla}}\)) | **Not built** | Recurrence-level \(\Theta(\cdot)\) classes exist; circuit resource ledgers for synthesized skeletons do not |
 | **Protocol extensions** (treewidth / low-rank / …) | **Not built** | Domain-specific generators may support forward discovery; they are not synthesis-protocol extensions |
-| **Query-tape recovery** (HSP extractors) | **Partial** | `RecoveryDomain` + collision catalog (`rde.recovery`); not divide/combine |
+| **Query-tape recovery** (HSP extractors) | **Partial** | `RecoveryDomain` + collision-algebra catalog, plus depth-2 compositional chain search (`rde.recovery`, `search_space.search_recovery_chains`) over an independent discovery/confirmatory split; not divide/combine |
 
 ### Known gaps inside the implemented top
 

@@ -13,14 +13,28 @@ from rde.recovery.extractors import (
     XorCollisionExtractor,
     default_extractor_catalog,
 )
-from rde.recovery.programs import enumerate_recovery_programs
+from rde.recovery.programs import (
+    ConfidentCollisionProgram,
+    GroupClosureProgram,
+    PairCombine,
+    enumerate_recovery_programs,
+)
 from rde.recovery.search import RecoveryReport, RecoveryRow, evaluate_protocols
+from rde.recovery.search_space import (
+    RecoveryChainResult,
+    enumerate_recovery_chains,
+    search_recovery_chains,
+)
 from rde.recovery.campaign import ProtocolSearchVerdict, assess_protocol_search
 
 __all__ = [
     "AdditiveGcdExtractor",
     "AdditiveSumExtractor",
+    "ConfidentCollisionProgram",
+    "GroupClosureProgram",
+    "PairCombine",
     "QueryTape",
+    "RecoveryChainResult",
     "RecoveryDomain",
     "RecoveryProtocol",
     "RecoveryReport",
@@ -29,19 +43,8 @@ __all__ = [
     "XorCollisionExtractor",
     "assess_protocol_search",
     "default_extractor_catalog",
+    "enumerate_recovery_chains",
     "enumerate_recovery_programs",
     "evaluate_protocols",
-]
-
-__all__ = [
-    "AdditiveGcdExtractor",
-    "AdditiveSumExtractor",
-    "QueryTape",
-    "RecoveryDomain",
-    "RecoveryProtocol",
-    "RecoveryReport",
-    "RecoveryRow",
-    "XorCollisionExtractor",
-    "default_extractor_catalog",
-    "evaluate_protocols",
+    "search_recovery_chains",
 ]
