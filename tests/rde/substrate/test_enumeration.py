@@ -28,6 +28,13 @@ def test_require_halt_false_yields_every_prefix_too():
     assert len(without) > len(with_halt)
 
 
+def test_require_halt_false_never_yields_the_empty_program():
+    # "Every program of length 1..max_length" is the documented contract --
+    # a length-0 program is not a valid candidate under either setting.
+    programs = list(enumerate_programs(2, operand_range=range(0, 1), require_halt=False))
+    assert all(len(p) >= 1 for p in programs)
+
+
 def test_identity_program_is_reachable_at_length_one():
     programs = list(enumerate_programs(1, operand_range=range(0, 2)))
     ids = {p.program_id for p in programs}
@@ -59,4 +66,12 @@ def test_rediscover_offset_finds_a_verified_program_end_to_end():
 def test_rediscover_offset_returns_none_when_offset_outside_search_space():
     # offset=99 cannot be reached by any PUSH within operand_range=range(0,4).
     program = rediscover_offset(99, max_length=3, operand_range=range(0, 4))
+    assert program is None
+
+
+def test_empty_batch_never_vacuously_verifies_every_candidate():
+    # Zero evidence must not count as proof -- an empty train/holdout batch
+    # should reject every candidate, not let the untested identity program
+    # "win" as the shortest apparently-correct answer.
+    program = rediscover_offset(5, xs_train=(), xs_holdout=(), max_length=2, operand_range=range(0, 2))
     assert program is None

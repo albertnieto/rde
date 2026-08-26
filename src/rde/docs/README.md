@@ -62,6 +62,49 @@ Search reuses durable measurements. It does not silently regenerate a
 campaign or treat a failed stage as a null result; reports contain stage
 errors and checkpoint metadata.
 
+## Additional commands
+
+Not exhaustive prose above every flag — `--help` on any of these is
+authoritative. Grouped by what they act on:
+
+Discovery-adjacent (Phase 2b/4/5, `src/rde/discovery/`,
+`src/rde/expression/`):
+
+```bash
+python -m rde discover-symbolic --run-id <run_id> --store-root rde_runs   # symbolic regression + latent interpretation
+python -m rde rank-expr --run-id <run_id> --target metric.target --store-root rde_runs  # rank expression-DSL candidates
+python -m rde retain-topk --run-id <run_id> --store-root rde_runs         # keep targets + ranked columns only
+```
+
+Outcome gating (G0–G5, `src/rde/analyze/outcome.py`):
+
+```bash
+python -m rde outcome --run-id <run_id> --store-root rde_runs   # assess pre-registered G0 vs G1 outcome
+python -m rde audit --run-id <run_id> --store-root rde_runs     # leak/tautology audit on promoted conjectures
+python -m rde obstruct --run-id <run_id> --store-root rde_runs  # obstruction witness panel + lower-bound conjectures
+python -m rde certify --run-id <run_id> --store-root rde_runs   # G5 candidate resource/query pre-check
+```
+
+Representation Core (`src/rde/representation/`, not campaign features —
+see [Architecture](ARCHITECTURE.md)):
+
+```bash
+python -m rde repr-rank --n 8 --samples 8 --pattern random          # rank the fixed grammar against a demo batch
+python -m rde repr-rank --input batch.npy                           # ...or a real (samples, n) .npy batch
+python -m rde repr-rank-run --run-id <run_id> --array-key <key> --store-root rde_runs  # rank against a stored array field
+```
+
+Store/hardware/schema utilities:
+
+```bash
+python -m rde analyze --run-id <run_id> --store-root rde_runs         # feature-table analysis
+python -m rde calibrate --run-id <run_id> --store-root rde_runs       # calibrate complexity metric across instance groups
+python -m rde validate --run-id <run_id> --store-root rde_runs        # validate features.jsonl schema
+python -m rde stress-store --store-root rde_runs                      # synthetic JSONL write benchmark
+python -m rde power-plan --campaign-id <campaign_id> --store-root rde_runs   # prospective power planning from campaign data
+python -m rde calibrate-hardware                                      # benchmark a declared RDE resource profile
+```
+
 ## Reverse synthesis
 
 Mode 2 starts from a resource target and searches algorithm skeletons:
@@ -103,13 +146,22 @@ Optional symbolic engines can be installed with the package's symbolic extra.
 
 ## Domain contract
 
-A domain implements `rde.core.protocols.Domain`:
+A domain implements `rde.core.protocols.Domain`, which declares:
 
 - `domain_id`;
 - `generate(n, size, seed)`;
 - `materialize(instance, index)`;
-- optional `primitive_features(instance, cache=...)`;
-- optional `prepare_instance(instance, indices=...)` for expensive shared work.
+- `primitive_features(instance)`.
+
+Two more hooks are runtime conventions, not part of the `Domain` `Protocol`
+class itself — `runtime/worker.py` checks for them with `hasattr`/
+`inspect.signature` rather than the type system:
+
+- optional `prepare_instance(instance, indices=...)`, called once when
+  `materialize` and `primitive_features` would otherwise recompute the same
+  expensive primitive;
+- when `prepare_instance` exists, its result is passed as `cache=...` to
+  `materialize`/`primitive_features` if their own signature accepts it.
 
 Plugins register a callable in the `rde.domains` entry-point group. The
 callable receives a `Registry` and registers its domain, descriptors, metrics,

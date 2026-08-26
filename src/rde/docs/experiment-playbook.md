@@ -93,7 +93,7 @@ skipped the discovery loop. So the bar is now **mechanical**.
   reused landscape cannot fake), held-out rows, the leak audit, and that the
   required discovery phases actually ran. Only then does `finalize()` write
   `receipt.json`.
-- **`tests/rde/test_experiment_receipts.py`** fails the suite when an
+- **`tests/rde/experiment/test_receipts.py`** fails the suite when an
   experiment ships a `results.md` claiming a verdict without a valid receipt.
   Shortcutting is a red test, not a self-report.
 - **The `new-experiment` scaffold** emits a `run.py` with the gate and the full
@@ -149,7 +149,8 @@ this document exists to prevent.
 
 ### 3.1 Domain contract
 
-Add a `DomainContract` (see `coined_walk_contract()` in
+Add a `DomainContract` (see `hsp_functions_contract()` in
+`src/rde_domains/contracts.py`; the `DomainContract` type itself lives in
 `src/rde/core/domain_contract.py`). It declares:
 
 - `primary_target` (an outcome metric, e.g. `metric.E_peak`),
@@ -160,7 +161,8 @@ Add a `DomainContract` (see `coined_walk_contract()` in
   (respect the brute-force cap \(N \le 14\)),
 - `recurrence_applicable` / `representation_applicable` — set honestly.
 
-Register it in the `_CONTRACTS` dict.
+Register it with `register_domain_contract()`
+(`src/rde/core/domain_contract.py`).
 
 ### 3.2 A real population (a distribution, not a grid)
 
@@ -264,8 +266,9 @@ verdict = "SIGNAL" if assessment.grade >= 1 else "NULL"
 ```
 
 For the full staged path (calibration → confirmatory with checkpoints, latent,
-symbolic, phase-6, leak audit, replication), use `rde science-ledger` /
-`run_discovery` once the contract is in place, rather than reimplementing it.
+symbolic, phase-6, leak audit, replication), use `run_discovery`
+(`src/rde/discovery/loop.py`) via `rde.experiment.runner.run_experiment_main`
+once the contract is in place, rather than reimplementing it.
 
 Assign splits from the contract so held-out families are excluded from
 discovery (`rde.analyze.splits.SplitPolicy` / `assign_instance_fold`), and
@@ -284,9 +287,9 @@ was trivial *and* it round-tripped MLX through NumPy every step.
   candidates. Small-\(N\) setup, symbolic trees, and dependency-ordered work are
   the only allowed exceptions, and must be labelled as such.
 - **Batch on device.** Group compatible instances so `prepare_instances_batch`
-  and pipeline `batch_size` reuse work. Cache device tensors (Q, coin blocks,
-  flip indices, costs) — see the `_MlxWalkCache` pattern in
-  `src/rde_domains/coined_walk/evolution.py`. **No MLX↔NumPy round-trip inside a
+  and pipeline `batch_size` reuse work. Cache device tensors instead of
+  rebuilding them every step — see `MlxBackend._assignment_cache` in
+  `src/rde/backends/mlx_backend.py`. **No MLX↔NumPy round-trip inside a
   step loop.**
 - **Workers** where process pools are safe; pre-batch GPU work in the parent.
 - **Parity tests** for every fast path (NumPy reference + MLX when available),
@@ -355,7 +358,7 @@ until something clears the bar.
 2. **The label *is* the thing under study, nothing held out.** No
    generalization test is possible.
 3. **`run_pipeline` only.** No discovery, no gate — cannot discover or reject.
-4. **No contract.** Incompatible with science-ledger / gates; targets undefined.
+4. **No contract.** Incompatible with `run_discovery` / `ExperimentGate`; targets undefined.
 5. **Outcome columns as predictors.** Trivial \(r=1\); the "result" is an
    identity. Always leak-audit.
 6. **Size covariate mistaken for structure.** `n_nodes`/`avg_degree`/`size` are

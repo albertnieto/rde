@@ -52,16 +52,22 @@ actually covered vs. the original proposal):
   general `StructurePreservingMap` vocabulary entry, instantiated as a
   graph homomorphism/isomorphism check against `graph.py`'s
   `RepresentationGraph` (the one graph-structured object this package has).
-  Topological homeomorphism specifically remains unimplemented —
-  `RepresentationGraph` is a discrete labeled graph, not a topological
-  space, so that notion still has nothing real to check it against here.
+  Topological homeomorphism specifically remains unimplemented as of this
+  gap-closure pass — `RepresentationGraph` is a discrete labeled graph, not
+  a topological space, so that notion has nothing real to check it against
+  yet. (Superseded later in this docstring: `topology.py` closes this gap
+  with a genuine, non-vacuous instance — see below.)
 - `structure.py` — a small, checkable "Structure Language" (sparsity,
   periodicity via spectral concentration, low-rank/separability via
   singular-value decay, conservation via group-orbit-average deviation,
   duality via `operator.py`'s diagonalization transport) toward the
-  original proposal's larger vocabulary; the rest (compositionality,
-  degeneracy, topology, correlation, entanglement) is not implemented —
-  nothing in this package's grammar instantiates them.
+  original proposal's larger vocabulary; as of this gap-closure pass, the
+  rest (compositionality, degeneracy, topology, correlation, entanglement)
+  is not implemented — nothing in this package's grammar instantiates them
+  yet. (Superseded later in this docstring: `layered.py`/`program_search.py`
+  implement composition, and `topology.py` implements a topology instance
+  — see below. `degeneracy`/`correlation`/`entanglement` remain genuinely
+  absent.)
 - `operator_discovery.py` — recovers an *unknown* linear operator from
   paired samples (`discover_linear_operator`, least squares) before ranking
   how well the grammar diagonalizes it, rather than assuming the operator

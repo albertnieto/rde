@@ -101,13 +101,21 @@ class HspFunctionRecovery:
         if isinstance(planted, AbelianDihedralSecret):
             if not isinstance(recovered, tuple) or len(recovered) != 2:
                 return False
-            s_ab, s_di = recovered
+            a, b = recovered
             # A generic search can pair any two protocols, including ones
             # that themselves return tuples (e.g. GroupClosureProgram) --
             # such a pairing is simply not a match here, not a crash.
-            if not isinstance(s_ab, (int, np.integer)) or not isinstance(s_di, (int, np.integer)):
+            if not isinstance(a, (int, np.integer)) or not isinstance(b, (int, np.integer)):
                 return False
-            return int(s_ab) == planted.s_abelian and int(s_di) == planted.s_dihedral
+            a, b = int(a), int(b)
+            # PairCombine's argument order is whichever position the two
+            # atoms happened to land at in the flat depth-1 catalog, not
+            # which secret each one actually recovers -- an order-sensitive
+            # match would silently score a genuinely correct two-mechanism
+            # recovery as a miss whenever the s_dihedral-recovering atom's
+            # catalog index happens to precede the s_abelian one's.
+            target = (planted.s_abelian, planted.s_dihedral)
+            return (a, b) == target or (b, a) == target
         if isinstance(planted, tuple) and not isinstance(recovered, tuple):
             return False
         if isinstance(recovered, tuple) and not isinstance(planted, tuple):

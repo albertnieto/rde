@@ -39,7 +39,11 @@ def _verify_programs(
 ) -> dict[str, VerifyResult]:
     results: dict[str, VerifyResult] = {}
     for program in candidates:
-        ok = True
+        # An empty batch is zero evidence, not proof -- without this guard
+        # the loop below never runs and every candidate would vacuously
+        # "verify" against nothing (e.g. the untested identity program would
+        # win as the shortest "correct" answer).
+        ok = bool(batch)
         for x, expected in batch:
             try:
                 trace = execute(program, x, max_steps=max_steps)

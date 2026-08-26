@@ -212,7 +212,12 @@ piecewise-linear once sorted (two linear segments joined at one knot),
 `sorted_permutation+sorted_then_difference+sorted_then_difference`
 (second-order differencing of the sorted values) reaches a lower complexity
 than the depth-2 chain `sorted_permutation+sorted_then_difference` — e.g.
-`22.0 -> 14.0` for one tested batch. This is not a reproduction of anything
+`18.0 -> 10.0` for one tested batch (re-verified against current code; an
+earlier revision of this section quoted `22.0 -> 14.0`, from before
+`permutation_complexity` replaced flat permutation charging in
+`sorted_permutation`/`sorted_then_difference` — §7 re-confirmed the
+*inequality* survived that change but did not restate this absolute pair).
+This is not a reproduction of anything
 §4 already found; §4's depth-2 chains were checked against clustered,
 skewed-categorical, and multi-frequency data, none of which has the
 second-order-flat structure this result depends on.

@@ -119,7 +119,7 @@ scalars starves Mode 1.
 
 | Mode | CLI | Methodology |
 |---|---|---|
-| **Fill** | `run`, `campaign`, `science-ledger` | Populate **P**, measure **Z** into the store |
+| **Fill** | `run`, `campaign` | Populate **P**, measure **Z** into the store |
 | **Search** | `discover`, `latent`, `discover-symbolic`, `represent`, `rank-*`, `synthesize` | Mode 1 hypotheses or Mode 2 skeletons |
 
 Fill and search are separable: run an expensive campaign once, iterate discovery

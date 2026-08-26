@@ -141,6 +141,21 @@ def test_abelian_dihedral_blend_is_now_a_real_scored_target():
     assert planted.s_dihedral == inst.params["s_dihedral"]
 
 
+def test_abelian_dihedral_match_is_order_insensitive_to_pair_combine_argument_order():
+    """`PairCombine`'s argument order comes from flat catalog position, not which
+    secret each atom actually recovers -- `match()` must accept either
+    `(s_abelian, s_dihedral)` or `(s_dihedral, s_abelian)`, not just the order a
+    fixed catalog happens to produce."""
+    from rde_domains.hsp_functions.recovery import AbelianDihedralSecret
+
+    planted = AbelianDihedralSecret(s_abelian=7, s_dihedral=13)
+    domain = HspFunctionRecovery()
+    assert domain.match((7, 13), planted) is True
+    assert domain.match((13, 7), planted) is True
+    assert domain.match((7, 14), planted) is False
+    assert domain.match((13,), planted) is False
+
+
 def test_pair_combine_answers_correctly_or_abstains_on_blend_family_never_wrong():
     """Zero false positives is the bar; full recall at low n_bits is not required."""
     from rde.recovery.programs import ConfidentCollisionProgram, PairCombine

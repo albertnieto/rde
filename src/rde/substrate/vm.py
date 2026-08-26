@@ -74,7 +74,9 @@ def execute(
         elif op == "POP":
             _pop()
         elif op == "DUP":
-            stack.append(stack[-1] if stack else 0)
+            if not stack:
+                raise ResourceExceeded("dup on empty stack")
+            stack.append(stack[-1])
         elif op == "SWAP":
             if len(stack) < 2:
                 raise ResourceExceeded("swap on stack of size < 2")

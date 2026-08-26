@@ -294,9 +294,13 @@ for honest **Z** measurement, not a new science letter. Details:
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 Example (illustrative, not a claim of generality): `rde.testing.block_separable`
-(a block-diagonal cost function, treatment/control skeleton search) is
-**Mode 2**, search at ALGORITHM / \(Z\)-skeleton depth, validation **V2** on
-planted vs dense controls — an *instance* of this methodology.
+(a block-diagonal cost function with block boundaries given, not hidden) is
+**Mode 2**, search at ALGORITHM / \(Z\)-skeleton depth, validation **V1**
+(rediscovers a known-poly decomposition skeleton, rejecting exponential
+brute force on complexity alone) — an *instance* of this methodology. The
+planted-vs-control **V2** pair is `rde_domains.tsp`'s `tsp_clustered` /
+`tsp_uniform_control`, not `block_separable`; see
+[hierarchical-synthesis.md](hierarchical-synthesis.md) §6.
 
 ---
 
@@ -330,9 +334,10 @@ Every “done / partial / not built” line must state:
 
 Example of a correct claim:
 
-> `block_separable`: Mode 2; compilation = TARGET+ALGORITHM; validation = V2;
-> outcome = rediscovery of a flat skeleton on a planted block-separable cost
-> function — not V3/V4, not a general poly algorithm.
+> `block_separable`: Mode 2; compilation = TARGET+ALGORITHM; validation = V1;
+> outcome = rediscovery of a flat decomposition skeleton against exponential
+> brute force on a block-separable cost function (block boundaries given,
+> not hidden — not V3/V4, not a general poly algorithm).
 
 ---
 

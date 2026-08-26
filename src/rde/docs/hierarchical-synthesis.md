@@ -98,8 +98,8 @@ the code.
 |---|---|---|
 | **TARGET** | **Done** | CLI `--target-degree` / `target_degree` in `rde.synthesis.search.synthesize`; `meets_target` in `rde.synthesis.recurrence` |
 | **ALGORITHM** | **Done (catalog + search)** | 10 verbs + skeleton catalog (`rde.synthesis.skeleton`); recurrence solver master / subtract / flat (`rde.synthesis.recurrence`); two-stage search (`rde.synthesis.search`) |
-| **Complexity pruning (pre-domain)** | **Done** | Symbolic `solve_recurrence` **before** any domain call; tests in `tests/rde/test_synthesis_recurrence.py` |
-| **Reference domain (toy)** | **Done** | `block_separable` — `rde.testing.block_separable.BlockSeparableDomain`; rediscovery tests in `tests/rde/test_synthesis_search.py` |
+| **Complexity pruning (pre-domain)** | **Done** | Symbolic `solve_recurrence` **before** any domain call; tests in `tests/rde/discovery/test_synthesis_recurrence.py` |
+| **Reference domain (toy)** | **Done** | `block_separable` — `rde.testing.block_separable.BlockSeparableDomain`; rediscovery tests in `tests/rde/discovery/test_synthesis_search.py` |
 | **Real domain** | **Done** | `TspSynthesisDomain` (`tsp_clustered` planted / `tsp_uniform_control`) — `src/rde_domains/tsp/domain.py`; tests `tests/rde_domains/test_tsp_synthesis.py` |
 | **MATHEMATICAL OPERATIONS DSL** | **Not built** | — |
 | **COMPUTATIONAL REPRESENTATION** | **Not built** | — |
@@ -165,7 +165,7 @@ Grades G0–G5 are a different axis.
 
 | Stage | Instance class | Intent | Status (Aug 2026) |
 |---|---|---|---|
-| **V1** | Known polynomial algorithms (matching, shortest path, …) **or** a toy with planted independent blocks | Rediscover a known poly skeleton; reject exponential brute force on complexity alone | **Partial:** `block_separable` toy rediscovery **done** (`tests/rde/test_synthesis_search.py`). Independent V1 on classical matching / shortest-path domains **not** built. |
+| **V1** | Known polynomial algorithms (matching, shortest path, …) **or** a toy with planted independent blocks | Rediscover a known poly skeleton; reject exponential brute force on complexity alone | **Partial:** `block_separable` toy rediscovery **done** (`tests/rde/discovery/test_synthesis_search.py`). Independent V1 on classical matching / shortest-path domains **not** built. |
 | **V2** | Artificial hidden structure (planted, possibly permuted) | Structure must be *detected*, not handed pre-split | **Done:** `tsp_clustered` / `tsp_uniform_control`. Treatment accepts a decomposed skeleton when the planted cluster gap holds; control accepts nothing; a blind contiguous splitter is `rejected_incorrect`. |
 | **V3** | Structured families (treewidth, low-rank, band, …) with honest size accounting | Protocol / catalog extensions beyond block-separability | **Not built** for synthesis |
 | **V4** | General / dense instances | Either a verified poly skeleton or a scoped negative under an explicit catalog quantifier | **Not built** — and must not be claimed from V1 toy success |

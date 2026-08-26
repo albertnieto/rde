@@ -41,10 +41,12 @@ class EliteArchive(Generic[CandidateT]):
 
     `resolution[i]` is the bucket width along descriptor axis `i` -- a
     descriptor value `v` falls in bucket `floor(v / resolution[i])`. Only
-    the strictly-highest-fitness candidate per bucket is kept (`add` only
-    replaces the incumbent when the new candidate's fitness is strictly
-    greater, so insertion order never matters for the final archive),
-    matching MAP-Elites' "keep the best per niche" rule.
+    the highest-fitness candidate per bucket is kept (`add` only replaces
+    the incumbent when the new candidate's fitness is strictly greater),
+    matching MAP-Elites' "keep the best per niche" rule. Insertion order
+    does not affect the final archive except on an exact fitness tie, where
+    the first-inserted candidate wins and a later, equal-fitness challenger
+    is discarded.
     """
 
     def __init__(self, resolution: Sequence[float]):

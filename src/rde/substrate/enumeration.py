@@ -54,7 +54,7 @@ def enumerate_programs(
     choices = _instruction_choices(operand_range)
 
     def _extend(prefix: tuple[Instruction, ...]) -> Iterator[Program]:
-        if not require_halt or (prefix and prefix[-1].opcode == "HALT"):
+        if prefix and (not require_halt or prefix[-1].opcode == "HALT"):
             yield Program(instructions=prefix)
         if len(prefix) >= max_length:
             return

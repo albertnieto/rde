@@ -56,6 +56,11 @@ def test_pop_on_empty_stack_raises():
         execute(_prog(("POP", 0), ("POP", 0)), 1)
 
 
+def test_dup_on_empty_stack_raises():
+    with pytest.raises(ResourceExceeded):
+        execute(_prog(("POP", 0), ("DUP", 0)), 1)
+
+
 def test_store_and_load_round_trip_through_memory():
     program = _prog(("STORE", 0), ("PUSH", 1), ("LOAD", 0), ("ADD", 0))
     assert execute(program, 99).output == 100
