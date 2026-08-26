@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import inspect
 from typing import Any, Callable, Protocol, runtime_checkable
@@ -238,6 +238,11 @@ class QueryTape:
     budget: int
     modulus: int
     n_bits: int
+    # Per-tape derived structures shared by a recovery catalog.  A catalog can
+    # contain many programs that read the same relation (for example, the
+    # Hamming-near label relation); recomputing it for every candidate would
+    # turn a polynomial recovery search into needless repeated work.
+    cache: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
 
 @runtime_checkable

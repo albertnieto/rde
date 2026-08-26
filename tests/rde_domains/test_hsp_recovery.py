@@ -262,3 +262,37 @@ def test_search_recovery_chains_no_family_branch_end_to_end():
         rng=np.random.default_rng(3),
     )
     print(f"abelian_dihedral_blend @ n_bits={n_bits}: {len(blend_results)} chain(s) cleared the bar")
+
+
+@pytest.mark.parametrize("family", ("approximate_cyclic_period", "approximate_cyclic_period_alt"))
+def test_near_collision_program_recovers_approximate_cyclic_period_and_exact_program_does_not(family):
+    """The new grammar reads a label relation, not a family-specific branch."""
+    from rde.recovery.programs import CollisionProgram, NearCollisionProgram
+
+    inst = make_instance(family, n_bits=8, seed=7)
+    domain = HspFunctionRecovery()
+    near = NearCollisionProgram("diff", "gcd", "id", radius=4)
+    exact = CollisionProgram("diff", "gcd", "id")
+    near_report = evaluate_protocols(domain, [inst], [near], rng=np.random.default_rng(17))
+    exact_report = evaluate_protocols(domain, [inst], [exact], rng=np.random.default_rng(17))
+    assert near_report.rate(near.protocol_id, family) == 1.0
+    assert exact_report.rate(exact.protocol_id, family) == 0.0
+
+
+def test_approximate_cyclic_labels_have_no_nontrivial_exact_matches_but_are_hamming_near():
+    from rde.recovery.tape import collision_groups, near_collision_groups
+
+    inst = make_instance("approximate_cyclic_period_alt", n_bits=8, seed=3)
+    r = int(inst.params["r"])
+    xs = np.arange(0, 4 * r, r, dtype=np.int64)
+    from rde.core.protocols import QueryTape
+
+    tape = QueryTape(
+        xs=xs,
+        ys=inst.evaluate_batch(xs),
+        budget=len(xs),
+        modulus=inst.x_size,
+        n_bits=inst.n_bits,
+    )
+    assert collision_groups(tape) == []
+    assert near_collision_groups(tape, radius=4) == [xs.tolist()]

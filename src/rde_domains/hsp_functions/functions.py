@@ -27,7 +27,7 @@ from typing import Any
 
 import numpy as np
 
-FAMILIES_HELD_OUT = ("simon", "shor_cyclic", "dihedral_kuperberg")
+FAMILIES_HELD_OUT = ("simon", "shor_cyclic", "dihedral_kuperberg", "approximate_cyclic_period_alt")
 FAMILIES_DISCOVERY = ("structure_break_abelian", "abelian_dihedral_blend", "generic_random_control")
 ALL_FAMILIES = FAMILIES_HELD_OUT + FAMILIES_DISCOVERY
 # An alternative discovery roster: non-abelian pairings that are not
@@ -42,7 +42,14 @@ KNOWN_FAMILIES = tuple(
     dict.fromkeys(
         ALL_FAMILIES
         + FAMILIES_PHASE3_DISCOVERY
-        + ("hsp_recipe", PATH_B_HEISENBERG_FAMILY, "multiplicative_fold")
+        + (
+            "hsp_recipe",
+            PATH_B_HEISENBERG_FAMILY,
+            "multiplicative_fold",
+            "approximate_cyclic_period",
+            "approximate_cyclic_period_alt",
+            "approximate_xor_shift",
+        )
     )
 )
 RECIPE_FAMILY = "hsp_recipe"
@@ -76,6 +83,18 @@ def _bit_noise(seed: int, x: int, salt: int, tau: float) -> bool:
     if tau <= 0.0:
         return False
     return _uniform_unit(seed, x, salt) < tau
+
+
+def _approximate_label(seed: int, coset_repr: int, error: int, salt: int) -> int:
+    """A deterministic, bounded-Hamming perturbation of a coset label.
+
+    The exact-label families deliberately make all points of a coset equal.
+    EXP-001 instead gives each member a distinct low-weight perturbation of
+    the same pseudorandom 63-bit coset label.  The number itself remains an
+    opaque label: arithmetic proximity has no role; only the explicitly
+    declared Hamming metric is available to a recovery protocol.
+    """
+    return _label_hash(seed, coset_repr, salt) ^ int(error)
 
 
 # --- Vectorized (NumPy) counterparts of the scalar hash primitives above ---
@@ -119,6 +138,10 @@ def _bit_noise_batch(seed: int, x: np.ndarray, salt: int, tau: float) -> np.ndar
     if tau <= 0.0:
         return np.zeros(x.shape, dtype=bool)
     return _uniform_unit_batch(seed, x, salt) < tau
+
+
+def _approximate_label_batch(seed: int, coset_repr: np.ndarray, error: np.ndarray, salt: int) -> np.ndarray:
+    return _label_hash_batch(seed, coset_repr, salt) ^ error.astype(np.uint64)
 
 
 # Quaternion group Q8 encoded in 3 bits:
@@ -317,6 +340,25 @@ def _evaluate(inst: FunctionInstance, x: int) -> int:
         r = p["r"]
         coset = x % r
         return _label_hash(inst.seed, coset, salt=2)
+    if fam in {"approximate_cyclic_period", "approximate_cyclic_period_alt"}:
+        r = int(p["r"])
+        member = x // r
+        if fam == "approximate_cyclic_period":
+            error = 1 << member
+            salt = 81
+        else:
+            # A held-out perturbation mechanism: members still live within
+            # Hamming distance four of each other, but use two-bit rather
+            # than one-bit signatures.  No exact output equality remains
+            # within a coset in either mechanism.
+            error = (1 << (2 * member)) | (1 << (2 * member + 1))
+            salt = 82
+        return _approximate_label(inst.seed, x % r, error, salt)
+    if fam == "approximate_xor_shift":
+        s = int(p["s"])
+        coset = min(x, x ^ s)
+        error = 1 if x == coset else 2
+        return _approximate_label(inst.seed, coset, error, salt=83)
     if fam == "dihedral_kuperberg":
         s = p["s"]
         coset = min(x, (s - x) % inst.x_size)
@@ -385,6 +427,22 @@ def _evaluate_batch(inst: FunctionInstance, xs: np.ndarray) -> np.ndarray:
         r = p["r"]
         coset = xs % r
         return _label_hash_batch(inst.seed, coset, salt=2)
+    if fam in {"approximate_cyclic_period", "approximate_cyclic_period_alt"}:
+        r = int(p["r"])
+        member = xs // r
+        if fam == "approximate_cyclic_period":
+            error = np.left_shift(np.uint64(1), member.astype(np.uint64))
+            salt = 81
+        else:
+            member_u = member.astype(np.uint64)
+            error = np.left_shift(np.uint64(1), 2 * member_u) | np.left_shift(np.uint64(1), 2 * member_u + 1)
+            salt = 82
+        return _approximate_label_batch(inst.seed, xs % r, error, salt)
+    if fam == "approximate_xor_shift":
+        s = int(p["s"])
+        coset = np.minimum(xs, xs ^ s)
+        error = np.where(xs == coset, np.uint64(1), np.uint64(2))
+        return _approximate_label_batch(inst.seed, coset, error, salt=83)
     if fam == "dihedral_kuperberg":
         s = p["s"]
         coset = np.minimum(xs, (s - xs) % inst.x_size)
@@ -474,6 +532,21 @@ def make_instance(family: str, n_bits: int, seed: int) -> FunctionInstance:
         r = max(2, x_size // 2)  # |K_true| = x_size // r = 2, matching simon's |K|=2
         params = {"r": r, "structure_strength": 1.0}
         return FunctionInstance(family, "cyclic", n_bits, x_size, seed, params)
+    if family in {"approximate_cyclic_period", "approximate_cyclic_period_alt"}:
+        if n_bits < 6:
+            raise ValueError(f"{family} requires n_bits >= 6")
+        # H has a genuinely unknown (but preregistered bounded) order.  The
+        # cyclic group has one subgroup at each order, so varying this order
+        # is what makes the period/subgroup an actual recovery target.
+        orders = (4, 8, 16)
+        order = orders[_label_hash(seed, 0, 801) % len(orders)]
+        r = x_size // order
+        params = {"r": r, "subgroup_order": order, "structure_strength": 1.0}
+        return FunctionInstance(family, "cyclic", n_bits, x_size, seed, params)
+    if family == "approximate_xor_shift":
+        s = _rand_bits(811)
+        params = {"s": s, "structure_strength": 1.0}
+        return FunctionInstance(family, "gf2", n_bits, x_size, seed, params)
     if family == "dihedral_kuperberg":
         s = _rand_bits(103)
         params = {"s": s, "structure_strength": 1.0}

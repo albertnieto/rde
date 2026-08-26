@@ -133,7 +133,7 @@ def hsp_functions_contract() -> DomainContract:
         ),
         indices=(0,),
         generator_id=None,
-        held_out_generator_groups=("simon", "shor_cyclic", "dihedral_kuperberg"),
+        held_out_generator_groups=("simon", "shor_cyclic", "dihedral_kuperberg", "approximate_cyclic_period_alt"),
         recurrence_applicable=False,
         representation_applicable=True,
     )

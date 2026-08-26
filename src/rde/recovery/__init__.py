@@ -16,6 +16,7 @@ from rde.recovery.extractors import (
 from rde.recovery.programs import (
     ConfidentCollisionProgram,
     GroupClosureProgram,
+    NearCollisionProgram,
     PairCombine,
     enumerate_recovery_programs,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "AdditiveSumExtractor",
     "ConfidentCollisionProgram",
     "GroupClosureProgram",
+    "NearCollisionProgram",
     "PairCombine",
     "QueryTape",
     "RecoveryChainResult",

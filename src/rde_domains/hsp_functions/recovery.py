@@ -57,11 +57,11 @@ class HspFunctionRecovery:
         params = instance.params
         if family == "simon":
             return int(params["s"])
-        if family == "shor_cyclic":
+        if family in {"shor_cyclic", "approximate_cyclic_period", "approximate_cyclic_period_alt"}:
             return int(params["r"])
         if family == "dihedral_kuperberg":
             return int(params["s"])
-        if family == "structure_break_abelian":
+        if family in {"structure_break_abelian", "approximate_xor_shift"}:
             return int(params["s"])
         if family in {"heisenberg_noncentral", "heisenberg_v_low_register"}:
             return int(params["v"])

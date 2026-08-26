@@ -37,6 +37,7 @@ from rde.recovery.programs import (
     POSTS,
     ConfidentCollisionProgram,
     GroupClosureProgram,
+    NearCollisionProgram,
     PairCombine,
     enumerate_recovery_programs,
 )
@@ -55,7 +56,8 @@ def _encoder_key(protocol: Any) -> tuple[str, Any]:
     """
     bag = getattr(protocol, "bag", None)
     if bag is not None:
-        return ("bag", bag)
+        relation = "near" if isinstance(protocol, NearCollisionProgram) else "exact"
+        return (relation, "bag", bag)
     if isinstance(protocol, GroupClosureProgram):
         return ("closure", protocol.op, protocol.mask_bits)
     return ("other", protocol.protocol_id)

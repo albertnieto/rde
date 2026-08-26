@@ -15,10 +15,11 @@ from rde.core.protocols import QueryTape
 from rde.recovery.tape import collision_groups
 
 
-def _pair_values(tape: QueryTape, op: str) -> list[int]:
+def _pair_values_from_groups(groups: list[list[int]], op: str, modulus: int) -> list[int]:
+    """Apply a pair algebra to pre-grouped query points."""
     values: list[int] = []
-    mod = int(tape.modulus)
-    for group in collision_groups(tape):
+    mod = int(modulus)
+    for group in groups:
         base = group[0]
         for other in group[1:]:
             if op == "xor":
@@ -42,6 +43,10 @@ def _pair_values(tape: QueryTape, op: str) -> list[int]:
             if v:
                 values.append(int(v))
     return values
+
+
+def _pair_values(tape: QueryTape, op: str) -> list[int]:
+    return _pair_values_from_groups(collision_groups(tape), op, int(tape.modulus))
 
 
 def _mode_or_none(values: list[int]) -> int | None:

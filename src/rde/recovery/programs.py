@@ -28,8 +28,9 @@ from rde.recovery.extractors import (
     _mode_or_none,
     _mode_or_none_confident,
     _pair_values,
+    _pair_values_from_groups,
 )
-from rde.recovery.tape import collision_groups
+from rde.recovery.tape import collision_groups, near_collision_groups
 
 BAGS = ("xor", "diff", "sum", "ratio")
 REDUCERS = ("mode", "gcd")
@@ -84,6 +85,32 @@ class CollisionProgram:
 
     def extract(self, tape: QueryTape) -> int | None:
         values = _pair_values(tape, self.bag)
+        return _postprocess(_reduce(values, self.reducer), self.post, tape.n_bits)
+
+
+@dataclass(frozen=True)
+class NearCollisionProgram:
+    """Collision algebra over a fixed Hamming-near label relation.
+
+    The program is deliberately the same bag/reducer/post grammar as
+    ``CollisionProgram``.  Its only additional operation is a predeclared
+    generic relation on output labels, so the recovery search can discover
+    whether an existing algebraic post-processing move survives approximate
+    labels without receiving a family name or planted object.
+    """
+
+    bag: str
+    reducer: str
+    post: str
+    radius: int = 4
+
+    @property
+    def protocol_id(self) -> str:
+        return f"near{self.radius}_{self.bag}_{self.reducer}_{self.post}"
+
+    def extract(self, tape: QueryTape) -> int | None:
+        groups = near_collision_groups(tape, radius=self.radius)
+        values = _pair_values_from_groups(groups, self.bag, int(tape.modulus))
         return _postprocess(_reduce(values, self.reducer), self.post, tape.n_bits)
 
 
@@ -291,6 +318,13 @@ def enumerate_recovery_programs() -> tuple[object, ...]:
             for post in POSTS:
                 programs.append(CollisionProgram(bag, reducer, post))
         programs.append(UniqueMaskedProgram(bag, 3))
+    # Radius four is fixed in EXP-001's preregistration.  It is broad enough
+    # for both independently specified bounded-label perturbation models;
+    # it is not tuned per family or after observing held-out results.
+    for bag in BAGS:
+        for reducer in REDUCERS:
+            for post in POSTS:
+                programs.append(NearCollisionProgram(bag, reducer, post, radius=4))
     programs.append(Gf2SpanProgram())
     programs.extend(default_pipeline_extractors())
     return tuple(programs)
